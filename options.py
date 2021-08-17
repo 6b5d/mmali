@@ -47,3 +47,5 @@ parser.add_argument('--max_d', type=int, default=10000)
 
 # parser.add_argument('--pretrained_dir', type=str)
 parser.add_argument('--n_extra', type=int, default=10000)
+parser.add_argument('--n_extra_x1', type=int, default=10000)
+parser.add_argument('--n_extra_x2', type=int, default=10000)

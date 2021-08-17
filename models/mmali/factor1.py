@@ -323,15 +323,15 @@ class FactorModel(nn.Module):
                     losses['{}_c1'.format(modality_key)] = self.lambda_unimodal * torch.mean(torch.stack(adv_losses,
                                                                                                          dim=0), dim=0)
 
-                if self.lambda_x_rec > 0.0:
-                    for k in self.sorted_keys:
-                        decoder = getattr(self.decoders, k)
-                        x_real = real_inputs[k]['x']
-                        z_enc = gen_inputs[k]['z']
-                        x_rec = decoder(z_enc)
-
-                        x_rec_loss = (x_rec - x_real).square().mean()
-                        losses['{}_x_rec_unimodal'.format(k)] = self.lambda_x_rec * x_rec_loss
+                # if self.lambda_x_rec > 0.0:
+                #     for k in self.sorted_keys:
+                #         decoder = getattr(self.decoders, k)
+                #         x_real = real_inputs[k]['x']
+                #         z_enc = gen_inputs[k]['z']
+                #         x_rec = decoder(z_enc)
+                #
+                #         x_rec_loss = (x_rec - x_real).square().mean()
+                #         losses['{}_x_rec_unimodal'.format(k)] = self.lambda_x_rec * x_rec_loss
 
                 if self.lambda_s_rec > 0.0:
                     for k in self.sorted_keys:

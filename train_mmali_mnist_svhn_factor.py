@@ -368,43 +368,53 @@ def main():
                                                max_d=opt.max_d, dm=opt.data_multiplication, use_all=False)
 
     paired_idx1 = paired_dataset.mnist_idx.unique().numpy()
-    extra_idx1 = np.setdiff1d(np.arange(len(x1_dataset)), paired_idx1)[:opt.n_extra]
-    total_idx1 = np.concatenate([paired_idx1, extra_idx1])
+    diff = np.setdiff1d(np.arange(len(x1_dataset)), paired_idx1)
+    print('x1 remain: {} - {} = {}'.format(len(diff), opt.n_extra_x1, len(diff) - opt.n_extra_x1))
+    if opt.n_extra_x1 > 0:
+        extra_idx1 = diff[:opt.n_extra_x1]
+        total_idx1 = np.concatenate([paired_idx1, extra_idx1])
+    else:
+        total_idx1 = paired_idx1
 
-    x1_subset = torch.utils.data.Subset(x1_dataset, extra_idx1)
-    x1_uni_set = torch.utils.data.Subset(x1_dataset, total_idx1)
+    # x1_subset = torch.utils.data.Subset(x1_dataset, extra_idx1)
+    x1_universal_set = torch.utils.data.Subset(x1_dataset, total_idx1)
 
     paired_idx2 = paired_dataset.svhn_idx.unique()
-    extra_idx2 = np.setdiff1d(np.arange(len(x2_dataset)), paired_idx2)[:opt.n_extra]
-    total_idx2 = np.concatenate([paired_idx2, extra_idx2])
+    diff = np.setdiff1d(np.arange(len(x2_dataset)), paired_idx2)
+    print('x2 remain: {} - {} = {}'.format(len(diff), opt.n_extra_x2, len(diff) - opt.n_extra_x2))
+    if opt.n_extra_x2 > 0:
+        extra_idx2 = diff[:opt.n_extra_x2]
+        total_idx2 = np.concatenate([paired_idx2, extra_idx2])
+    else:
+        total_idx2 = paired_idx2
 
-    x2_subset = torch.utils.data.Subset(x2_dataset, extra_idx2)
-    x2_uni_set = torch.utils.data.Subset(x2_dataset, total_idx2)
+    # x2_subset = torch.utils.data.Subset(x2_dataset, extra_idx2)
+    x2_universal_set = torch.utils.data.Subset(x2_dataset, total_idx2)
 
     x1_dataloader = iter(
-        torch.utils.data.DataLoader(x1_uni_set,
+        torch.utils.data.DataLoader(x1_universal_set,
                                     batch_size=opt.batch_size,
                                     num_workers=opt.n_cpu,
-                                    sampler=datasets.InfiniteSamplerWrapper(x1_uni_set),
+                                    sampler=datasets.InfiniteSamplerWrapper(x1_universal_set),
                                     pin_memory=True))
-    x1_subsetloader = iter(
-        torch.utils.data.DataLoader(x1_subset,
-                                    batch_size=opt.batch_size,
-                                    num_workers=opt.n_cpu,
-                                    sampler=datasets.InfiniteSamplerWrapper(x1_subset),
-                                    pin_memory=True))
+    # x1_subsetloader = iter(
+    #     torch.utils.data.DataLoader(x1_subset,
+    #                                 batch_size=opt.batch_size,
+    #                                 num_workers=opt.n_cpu,
+    #                                 sampler=datasets.InfiniteSamplerWrapper(x1_subset),
+    #                                 pin_memory=True))
     x2_dataloader = iter(
-        torch.utils.data.DataLoader(x2_uni_set,
+        torch.utils.data.DataLoader(x2_universal_set,
                                     batch_size=opt.batch_size,
                                     num_workers=opt.n_cpu,
-                                    sampler=datasets.InfiniteSamplerWrapper(x2_uni_set),
+                                    sampler=datasets.InfiniteSamplerWrapper(x2_universal_set),
                                     pin_memory=True))
-    x2_subsetloader = iter(
-        torch.utils.data.DataLoader(x2_subset,
-                                    batch_size=opt.batch_size,
-                                    num_workers=opt.n_cpu,
-                                    sampler=datasets.InfiniteSamplerWrapper(x2_subset),
-                                    pin_memory=True))
+    # x2_subsetloader = iter(
+    #     torch.utils.data.DataLoader(x2_subset,
+    #                                 batch_size=opt.batch_size,
+    #                                 num_workers=opt.n_cpu,
+    #                                 sampler=datasets.InfiniteSamplerWrapper(x2_subset),
+    #                                 pin_memory=True))
     paired_dataloader = iter(
         torch.utils.data.DataLoader(paired_dataset,
                                     batch_size=opt.batch_size,
