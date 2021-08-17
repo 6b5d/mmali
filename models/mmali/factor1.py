@@ -47,23 +47,21 @@ class FactorModel(nn.Module):
 
         self.sorted_keys = sorted(encoders.keys())
 
-        self._debug_values = {}
-
+    @torch.no_grad()
     def lerp(self, other, beta):
         if beta == 1.0:
             return
 
-        with torch.no_grad():
-            params = list(self.generators.parameters())
-            other_params = list(other.generators.parameters())
-            for p, p_other in zip(params, other_params):
-                p.data.lerp_(p_other.data, 1.0 - beta)
+        params = list(self.generators.parameters())
+        other_params = list(other.generators.parameters())
+        for p, p_other in zip(params, other_params):
+            p.data.lerp_(p_other.data, 1.0 - beta)
 
-            # TODO: how to handle batch norm buffer?
-            buffers = list(self.generators.buffers())
-            other_buffers = list(other.generators.buffers())
-            for p, p_other in zip(buffers, other_buffers):
-                p.data.copy_(p_other.data)
+        # TODO: to handle batch norm buffer?
+        buffers = list(self.generators.buffers())
+        other_buffers = list(other.generators.buffers())
+        for p, p_other in zip(buffers, other_buffers):
+            p.data.copy_(p_other.data)
 
     def calc_joint_score(self, inputs, score_joint):
         scores = {}
@@ -104,7 +102,7 @@ class FactorModel(nn.Module):
         if train_d:
             if joint:
                 gen_inputs = {}
-                with torch.set_grad_enabled(not train_d):
+                with torch.set_grad_enabled(False):
                     for modality_key in self.sorted_keys:
                         encoder = getattr(self.encoders, modality_key)
 
@@ -112,7 +110,7 @@ class FactorModel(nn.Module):
 
                         enc_z = encoder(real_x)
 
-                        gen_inputs[modality_key] = {'z': enc_z, }
+                        gen_inputs[modality_key] = {'z': enc_z}
 
                 # make sure the order of sorted keys matches the input order of joint discriminator
                 joint_inputs = [real_inputs[k]['x'] for k in self.sorted_keys]
@@ -146,7 +144,7 @@ class FactorModel(nn.Module):
                         label_value += 1
             else:
                 gen_inputs = {}
-                with torch.set_grad_enabled(not train_d):
+                with torch.set_grad_enabled(True):
                     for modality_key in self.sorted_keys:
                         encoder = getattr(self.encoders, modality_key)
                         decoder = getattr(self.decoders, modality_key)
@@ -157,7 +155,7 @@ class FactorModel(nn.Module):
                         enc_z = encoder(real_x)
                         dec_x = decoder(real_z)
 
-                        gen_inputs[modality_key] = {'x': dec_x, 'z': enc_z, }
+                        gen_inputs[modality_key] = {'x': dec_x, 'z': enc_z}
 
                 for modality_key in self.sorted_keys:
                     discriminator = getattr(self.xz_discriminators, modality_key)
@@ -220,8 +218,7 @@ class FactorModel(nn.Module):
                     dis_score = self.calc_joint_score(curr_inputs, score_q)
                     adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                                   for i in range(dis_score.size(1)) if i != label_value]
-                    losses['joint_q{}'.format(label_value)] = self.weights[label_value] * torch.mean(
-                        torch.stack(adv_losses, dim=0), dim=0)
+                    losses['joint_q{}'.format(label_value)] = torch.mean(torch.stack(adv_losses, dim=0), dim=0)
 
                     label_value += 1
 
@@ -235,8 +232,8 @@ class FactorModel(nn.Module):
                 dis_score = self.calc_joint_score(curr_inputs, score_p)
                 adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                               for i in range(dis_score.size(1)) if i != label_value]
-                losses['joint_p{}'.format(label_value)] = self.weights[label_value] * torch.mean(
-                    torch.stack(adv_losses, dim=0), dim=0)
+                losses['joint_p{}'.format(label_value)] = torch.mean(torch.stack(adv_losses, dim=0), dim=0)
+                label_value += 1
 
                 for modality_key in self.sorted_keys:
                     discriminator = getattr(self.xz_discriminators, modality_key)
@@ -261,8 +258,9 @@ class FactorModel(nn.Module):
                         adv_losses = [F.cross_entropy(dis_other, i * label_ones)
                                       for i in range(dis_other.size(1)) if i != label_value]
 
-                        losses['{}_c{}'.format(modality_key, label_value)] = torch.mean(torch.stack(adv_losses, dim=0),
-                                                                                        dim=0)
+                        losses['{}_c{}'.format(modality_key, label_value)] = self.lambda_unimodal * torch.mean(
+                            torch.stack(adv_losses, dim=0),
+                            dim=0)
                         label_value += 1
 
                 if self.lambda_c_rec > 0.0:
@@ -295,7 +293,7 @@ class FactorModel(nn.Module):
                         x_rec = decoder(torch.cat([gen_inputs[k]['z'][:, :-self.content_dim], c_joint], dim=1))
 
                         x_rec_loss = (x_rec - x_real).square().mean()
-                        losses['{}_x_rec'.format(k)] = self.lambda_x_rec * x_rec_loss
+                        losses['{}_x_rec_joint'.format(k)] = self.lambda_x_rec * x_rec_loss
             else:
                 for modality_key in self.sorted_keys:
                     discriminator = getattr(self.xz_discriminators, modality_key)
@@ -313,7 +311,8 @@ class FactorModel(nn.Module):
                     adv_losses = [F.cross_entropy(dis_0, i * label_ones)
                                   for i in range(dis_0.size(1)) if i != label_value]
 
-                    losses['{}_c0'.format(modality_key)] = torch.mean(torch.stack(adv_losses, dim=0), dim=0)
+                    losses['{}_c0'.format(modality_key)] = self.lambda_unimodal * torch.mean(torch.stack(adv_losses,
+                                                                                                         dim=0), dim=0)
 
                     # p(x, s, c)
                     dis_1 = discriminator(dec_x, real_z)
@@ -321,7 +320,8 @@ class FactorModel(nn.Module):
                     label_value = 1
                     adv_losses = [F.cross_entropy(dis_1, i * label_ones)
                                   for i in range(dis_1.size(1)) if i != label_value]
-                    losses['{}_c1'.format(modality_key)] = torch.mean(torch.stack(adv_losses, dim=0), dim=0)
+                    losses['{}_c1'.format(modality_key)] = self.lambda_unimodal * torch.mean(torch.stack(adv_losses,
+                                                                                                         dim=0), dim=0)
 
                 if self.lambda_x_rec > 0.0:
                     for k in self.sorted_keys:
@@ -331,7 +331,7 @@ class FactorModel(nn.Module):
                         x_rec = decoder(z_enc)
 
                         x_rec_loss = (x_rec - x_real).square().mean()
-                        losses['{}_x_rec'.format(k)] = self.lambda_x_rec * x_rec_loss
+                        losses['{}_x_rec_unimodal'.format(k)] = self.lambda_x_rec * x_rec_loss
 
                 if self.lambda_s_rec > 0.0:
                     for k in self.sorted_keys:

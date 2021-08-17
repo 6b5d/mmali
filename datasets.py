@@ -195,11 +195,25 @@ class CUBCaptionVector(data.Dataset):
             self.data = (self.data - self.normalizer[0]) / self.normalizer[1]
 
         print('shape:', self.data.size())
-        print('min:', self.data.min().item(), 'max:', self.data.max().item())
+        print('min:', self.data.min().item(), 'max:', self.data.max().item(),
+              'mean:', self.data.mean().item(), 'std:', self.data.std().item())
 
-    def decode(self, x, remove_pad=True, sep=' '):
+    def encode(self, texts):
+        embeddings = []
+        for words in texts:
+            emb = np.stack([self.model.wv.get_vector(w) for w in words], axis=0)
+            embeddings.append(emb)
+
+        embeddings = np.stack(embeddings, axis=0)
+        embeddings = np.expand_dims(embeddings, axis=1)
+        embeddings = torch.from_numpy(embeddings)
+        if self.normalization:
+            embeddings = (embeddings - self.normalizer[0]) / self.normalizer[1]
+        return embeddings
+
+    def decode(self, x):
         # N, 1, H, W
-        x = x.squeeze(dim=-3)
+        x = x.squeeze(dim=1)
         if self.normalization:
             x = self.normalizer[1] * x + self.normalizer[0]
 
@@ -207,10 +221,8 @@ class CUBCaptionVector(data.Dataset):
         sentences = []
         for sent in x:
             words = [self.model.wv.similar_by_vector(word)[0][0] for word in sent]
+            sentences.append(words)
 
-            if remove_pad:
-                words = [w for w in words if w != '<pad>']
-            sentences.append(sep.join(words))
         return sentences
 
     def __len__(self):
@@ -250,7 +262,8 @@ class CUBImageFeature(data.Dataset):
             self.data = (self.data - self.normalizer[0]) / self.normalizer[1]
 
         print('shape:', self.data.size())
-        print('min:', self.data.min().item(), 'max:', self.data.max().item())
+        print('min:', self.data.min().item(), 'max:', self.data.max().item(),
+              'mean:', self.data.mean().item(), 'std:', self.data.std().item())
 
     def __len__(self):
         return len(self.data)
