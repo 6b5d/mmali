@@ -5,18 +5,14 @@ import torch.nn.functional as F
 
 
 class XXDiscriminator(nn.Module):
-    def __init__(self, img_shape=(1, 28, 28), channels=3, hidden_dim=400, num_features=32, output_dim=1,
-                 spectral_norm=True):
+    def __init__(self, img_shape=(1, 28, 28), channels=3, num_features=32, output_dim=1, spectral_norm=True):
         super().__init__()
 
         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
         layers = [
             nn.Flatten(start_dim=1),
 
-            sn(nn.Linear(int(np.prod(img_shape)), hidden_dim)),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            sn(nn.Linear(hidden_dim, 256)),
+            sn(nn.Linear(int(np.prod(img_shape)), 256)),
             nn.LeakyReLU(0.2, inplace=True),
         ]
         self.x1_discrimination = nn.Sequential(*layers)
@@ -44,9 +40,6 @@ class XXDiscriminator(nn.Module):
         self.joint_discriminator = nn.Sequential(
             sn(nn.Linear(512, 512)),
             nn.LeakyReLU(0.2, inplace=True),
-
-            # sn(nn.Linear(1024, 1024)),
-            # nn.LeakyReLU(0.2, inplace=True),
 
             sn(nn.Linear(512, output_dim)),
         )

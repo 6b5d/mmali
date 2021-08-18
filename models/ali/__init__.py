@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import utils
-
 
 def dis_dcgan(dis_fake, dis_real):
     loss = torch.mean(F.softplus(-dis_real)) + torch.mean(F.softplus(dis_fake))
@@ -63,21 +61,21 @@ class Model(nn.Module):
         self.dis_loss = dis_loss
         self.gen_loss = gen_loss
 
+    @torch.no_grad()
     def lerp(self, other, beta):
         if beta == 1.0:
             return
 
-        with torch.no_grad():
-            params = list(self.encoder.parameters()) + list(self.decoder.parameters())
-            other_params = list(other.encoder.parameters()) + list(other.decoder.parameters())
-            for p, p_other in zip(params, other_params):
-                p.data.lerp_(p_other.data, 1.0 - beta)
+        params = list(self.encoder.parameters()) + list(self.decoder.parameters())
+        other_params = list(other.encoder.parameters()) + list(other.decoder.parameters())
+        for p, p_other in zip(params, other_params):
+            p.data.lerp_(p_other.data, 1.0 - beta)
 
-            # TODO: how to handle batch norm buffer?
-            buffers = list(self.encoder.buffers()) + list(self.decoder.buffers())
-            other_buffers = list(other.encoder.buffers()) + list(other.decoder.buffers())
-            for p, p_other in zip(buffers, other_buffers):
-                p.data.copy_(p_other.data)
+        # TODO: how to handle batch norm buffer?
+        buffers = list(self.encoder.buffers()) + list(self.decoder.buffers())
+        other_buffers = list(other.encoder.buffers()) + list(other.decoder.buffers())
+        for p, p_other in zip(buffers, other_buffers):
+            p.data.copy_(p_other.data)
 
     def forward(self, x, z, train_d=True, progress=None):
         self.encoder.requires_grad_(not train_d)

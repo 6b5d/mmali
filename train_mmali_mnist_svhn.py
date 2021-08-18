@@ -314,32 +314,6 @@ def eval_generation(n_iter):
     writer.add_scalars('generation', accuracies, global_step=n_iter)
 
 
-def eval_prdc(n_iter):
-    cmd = 'python {}/src/eval_mnist_svhn_prdc.py'.format(output_dir)
-    cmd += ' --n_epochs 100 --batch_size 64'
-    cmd += ' --dataroot {}'.format(opt.dataroot)
-    cmd += ' --n_cpu {}'.format(opt.n_cpu)
-    cmd += ' --latent_dim {}'.format(opt.latent_dim)
-    cmd += ' --style_dim {}'.format(opt.style_dim)
-
-    prdcs = {}
-    for dset in ['mnist', 'svhn']:
-        extra = ' --dataset {}' \
-                ' --checkpoint {}/{}_decoder.pt'.format(dset, output_dir, dset)
-        print('evaluating prdc:', cmd + extra)
-        p, r, d, c = subprocess.run(cmd + extra,
-                                    capture_output=True,
-                                    text=True,
-                                    shell=True,
-                                    cwd='{}/src'.format(output_dir),
-                                    env=os.environ).stdout.strip().split('\n')[-4:]
-
-        prdcs[dset] = {'precision': float(p), 'recall': float(r), 'density': float(d), 'coverage': float(c)}
-    print(prdcs)
-    writer.add_scalars('prdc_mnist', prdcs['mnist'], global_step=n_iter)
-    writer.add_scalars('prdc_svhn', prdcs['svhn'], global_step=n_iter)
-
-
 def main():
     x1_dataset = torchvision.datasets.MNIST(opt.dataroot, train=True, download=True,
                                             transform=torchvision.transforms.ToTensor())
@@ -349,43 +323,41 @@ def main():
                                                max_d=opt.max_d, dm=opt.data_multiplication, use_all=False)
 
     paired_idx1 = paired_dataset.mnist_idx.unique().numpy()
-    extra_idx1 = np.setdiff1d(np.arange(len(x1_dataset)), paired_idx1)[:opt.n_extra]
-    total_idx1 = np.concatenate([paired_idx1, extra_idx1])
+    diff = np.setdiff1d(np.arange(len(x1_dataset)), paired_idx1)
+    print('x1 remain: {} - {} = {}'.format(len(diff), opt.n_extra_x1, len(diff) - opt.n_extra_x1))
+    if opt.n_extra_x1 > 0:
+        extra_idx1 = diff[:opt.n_extra_x1]
+        total_idx1 = np.concatenate([paired_idx1, extra_idx1])
+    else:
+        total_idx1 = paired_idx1
 
-    x1_subset = torch.utils.data.Subset(x1_dataset, extra_idx1)
-    x1_uni_set = torch.utils.data.Subset(x1_dataset, total_idx1)
+    x1_universal_set = torch.utils.data.Subset(x1_dataset, total_idx1)
 
     paired_idx2 = paired_dataset.svhn_idx.unique()
-    extra_idx2 = np.setdiff1d(np.arange(len(x2_dataset)), paired_idx2)[:opt.n_extra]
-    total_idx2 = np.concatenate([paired_idx2, extra_idx2])
+    diff = np.setdiff1d(np.arange(len(x2_dataset)), paired_idx2)
+    print('x2 remain: {} - {} = {}'.format(len(diff), opt.n_extra_x2, len(diff) - opt.n_extra_x2))
+    if opt.n_extra_x2 > 0:
+        extra_idx2 = diff[:opt.n_extra_x2]
+        total_idx2 = np.concatenate([paired_idx2, extra_idx2])
+    else:
+        total_idx2 = paired_idx2
 
-    x2_subset = torch.utils.data.Subset(x2_dataset, extra_idx2)
-    x2_uni_set = torch.utils.data.Subset(x2_dataset, total_idx2)
+    x2_universal_set = torch.utils.data.Subset(x2_dataset, total_idx2)
 
     x1_dataloader = iter(
-        torch.utils.data.DataLoader(x1_uni_set,
+        torch.utils.data.DataLoader(x1_universal_set,
                                     batch_size=opt.batch_size,
                                     num_workers=opt.n_cpu,
-                                    sampler=datasets.InfiniteSamplerWrapper(x1_uni_set),
+                                    sampler=datasets.InfiniteSamplerWrapper(x1_universal_set),
                                     pin_memory=True))
-    x1_subsetloader = iter(
-        torch.utils.data.DataLoader(x1_subset,
-                                    batch_size=opt.batch_size,
-                                    num_workers=opt.n_cpu,
-                                    sampler=datasets.InfiniteSamplerWrapper(x1_subset),
-                                    pin_memory=True))
+
     x2_dataloader = iter(
-        torch.utils.data.DataLoader(x2_uni_set,
+        torch.utils.data.DataLoader(x2_universal_set,
                                     batch_size=opt.batch_size,
                                     num_workers=opt.n_cpu,
-                                    sampler=datasets.InfiniteSamplerWrapper(x2_uni_set),
+                                    sampler=datasets.InfiniteSamplerWrapper(x2_universal_set),
                                     pin_memory=True))
-    x2_subsetloader = iter(
-        torch.utils.data.DataLoader(x2_subset,
-                                    batch_size=opt.batch_size,
-                                    num_workers=opt.n_cpu,
-                                    sampler=datasets.InfiniteSamplerWrapper(x2_subset),
-                                    pin_memory=True))
+
     paired_dataloader = iter(
         torch.utils.data.DataLoader(paired_dataset,
                                     batch_size=opt.batch_size,
@@ -401,23 +373,15 @@ def main():
         factor = 2
     content_dim = opt.latent_dim - opt.style_dim
 
-    # x1_feature = models.mnist.XDiscriminationFeature(img_shape=mnist_img_shape)
     x1_discriminators = nn.ModuleList([
-        models.mnist.XZDiscriminator(latent_dim=opt.latent_dim, output_dim=3),
-        models.mnist.XZDiscriminator(latent_dim=opt.latent_dim),
-        # models.mnist.XFeatureZDiscriminator(x1_feature, opt.latent_dim, output_dim=1),
-        # models.mnist.XFeatureZDiscriminator(x1_feature, opt.latent_dim),
+        models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim),
+        models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim),
     ])
-
-    # x2_feature = models.svhn.XDiscriminationFeature(channels=svhn_channels)
     x2_discriminators = nn.ModuleList([
-        models.svhn.XZDiscriminator(latent_dim=opt.latent_dim, output_dim=3),
-        models.svhn.XZDiscriminator(latent_dim=opt.latent_dim),
-        # models.svhn.XFeatureZDiscriminator(x2_feature, opt.latent_dim, output_dim=1),
-        # models.svhn.XFeatureZDiscriminator(x2_feature, opt.latent_dim),
+        models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim),
+        models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim),
     ])
-    # joint_discriminator = models.mnist_svhn.XXFeatureDiscriminator(x1_feature, x2_feature)
-    joint_discriminator = models.mnist_svhn.XXDiscriminatorConv()
+    joint_discriminator = models.mnist_svhn.XXDiscriminator(img_shape=mnist_img_shape, channels=svhn_channels)
 
     model = models.mmali.FactorModelDoubleSemi(
         encoders={
@@ -546,56 +510,70 @@ def main():
             d_losses_iter_avg[k] = d_losses_iter_avg[k] / opt.dis_iter
 
         # G update
-        g_losses = {}
+        g_loss_iter_avg = 0.0
+        g_losses_iter_avg = {}
+        for _ in range(opt.gen_iter):
+            g_losses = {}
 
-        # x1, x2 = next(paired_dataloader)
-        x1, _ = next(x1_dataloader)
-        x2, _ = next(x2_dataloader)
-        # x1, _ = next(x1_subsetloader)
-        # x2, _ = next(x2_subsetloader)
+            # x1, x2 = next(paired_dataloader)
+            x1, _ = next(x1_dataloader)
+            x2, _ = next(x2_dataloader)
+            # x1, _ = next(x1_subsetloader)
+            # x2, _ = next(x2_subsetloader)
 
-        x1, x2 = x1.to(device), x2.to(device)
-        g_losses.update(model({
-            key_mnist: {
-                'x': x1,
-                'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
-            },
-            key_svhn: {
-                'x': x2,
-                'z': torch.randn(opt.batch_size, opt.latent_dim).to(device)
-            },
-        }, train_d=False, joint=False, progress=progress))
+            x1, x2 = x1.to(device), x2.to(device)
+            g_losses.update(model({
+                key_mnist: {
+                    'x': x1,
+                    'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
+                },
+                key_svhn: {
+                    'x': x2,
+                    'z': torch.randn(opt.batch_size, opt.latent_dim).to(device)
+                },
+            }, train_d=False, joint=False, progress=progress))
 
-        x1, x2 = next(paired_dataloader)
-        x1, x2 = x1.to(device), x2.to(device)
-        s1 = torch.randn(opt.batch_size, opt.style_dim).to(device)
-        s2 = torch.randn(opt.batch_size, opt.style_dim).to(device)
-        c = torch.randn(opt.batch_size, opt.latent_dim - opt.style_dim).to(device)
-        g_losses.update(model({
-            key_mnist: {
-                'x': x1,
-                'z': torch.cat([s1, c], dim=1),
-            },
-            key_svhn: {
-                'x': x2,
-                'z': torch.cat([s2, c], dim=1),
-            },
-        }, train_d=False, joint=True, progress=progress))
+            x1, x2 = next(paired_dataloader)
+            x1, x2 = x1.to(device), x2.to(device)
+            s1 = torch.randn(opt.batch_size, opt.style_dim).to(device)
+            s2 = torch.randn(opt.batch_size, opt.style_dim).to(device)
+            c = torch.randn(opt.batch_size, opt.latent_dim - opt.style_dim).to(device)
+            g_losses.update(model({
+                key_mnist: {
+                    'x': x1,
+                    'z': torch.cat([s1, c], dim=1),
+                },
+                key_svhn: {
+                    'x': x2,
+                    'z': torch.cat([s2, c], dim=1),
+                },
+            }, train_d=False, joint=True, progress=progress))
 
-        g_loss = sum(g_losses.values())
-        optimizer_G.zero_grad(set_to_none=True)
-        g_loss.backward()
-        optimizer_G.step()
+            g_loss = sum(g_losses.values())
+            optimizer_G.zero_grad(set_to_none=True)
+            g_loss.backward()
+            optimizer_G.step()
+
+            g_loss_iter_avg += g_loss.item()
+            for k in g_losses.keys():
+                if k in g_losses_iter_avg:
+                    g_losses_iter_avg[k] += g_losses[k].item()
+                else:
+                    g_losses_iter_avg[k] = g_losses[k].item()
+
+        g_loss_iter_avg /= opt.gen_iter
+        for k in g_losses_iter_avg.keys():
+            g_losses_iter_avg[k] = g_losses_iter_avg[k] / opt.gen_iter
 
         d_loss = d_loss_iter_avg
-        g_loss = g_loss.item()
+        g_loss = g_loss_iter_avg
 
         print(
             '[Iter {:d}/{:d}] [D loss: {:f}] [G loss: {:f}]'.format(n_iter, opt.max_iter, d_loss, g_loss),
         )
 
         d_losses = d_losses_iter_avg
-        g_losses = {k: v.item() for k, v in g_losses.items()}
+        g_losses = g_losses_iter_avg
         writer.add_scalars('dis', d_losses, global_step=n_iter)
         writer.add_scalars('gen', g_losses, global_step=n_iter)
         writer.add_scalars('loss', {'d_loss': d_loss, 'g_loss': g_loss}, global_step=n_iter)
@@ -621,7 +599,7 @@ def main():
             try:
                 eval_latent(n_iter)
                 eval_generation(n_iter)
-                # eval_prdc(n_iter)
+
             except:
                 print('Something wrong during evaluation')
 
@@ -637,7 +615,7 @@ def main():
     try:
         eval_latent(n_iter)
         eval_generation(n_iter)
-        # eval_prdc(n_iter)
+
     except:
         print('Something wrong during evaluation')
 
