@@ -37,7 +37,7 @@ class DecoderFT(nn.Module):
             ]
         layers += [
             nn.Linear(channels // 2, channels),
-            # nn.Sigmoid(),
+            nn.Sigmoid(),
         ]
         self.model = nn.Sequential(*layers)
 
@@ -87,7 +87,6 @@ class XZDiscriminatorFT(nn.Module):
         hz = self.z_discrimination(z)
         out = self.discriminator(torch.cat([hx, hz], dim=1))
         return out
-
 
 # class XZDiscriminatorFT2(nn.Module):
 #     def __init__(self, latent_dim, channels=2048, output_dim=1, spectral_norm=True):

@@ -3,11 +3,12 @@ import torch.nn as nn
 
 
 class Encoder(nn.Module):
-    def __init__(self, latent_dim, num_features=32):
+    def __init__(self, emb_size, latent_dim, num_features=32):
         super().__init__()
 
         use_bias = False
         self.model = nn.Sequential(
+            nn.Linear(emb_size, 128),
             # size: 1 x 32 x 128
 
             nn.Conv2d(1, num_features, 4, 2, 1, bias=use_bias),
@@ -45,7 +46,7 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, latent_dim, num_features=32):
+    def __init__(self, emb_size, latent_dim, num_features=32):
         super().__init__()
 
         use_bias = False
@@ -78,7 +79,10 @@ class Decoder(nn.Module):
             # size: (num_features) x 32 x 128
 
             nn.ConvTranspose2d(num_features, 1, 4, 2, 1, bias=True),
-            # nn.Sigmoid(),
+            nn.ReLU(True),
+
+            nn.Linear(128, emb_size),
+            nn.Sigmoid(),
         )
 
     def forward(self, z):
@@ -86,12 +90,13 @@ class Decoder(nn.Module):
 
 
 class XZDiscriminator(nn.Module):
-    def __init__(self, latent_dim, num_features=32, output_dim=1, spectral_norm=True):
+    def __init__(self, emb_size, latent_dim, num_features=32, output_dim=1, spectral_norm=True):
         super().__init__()
 
         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
         use_bias = True
         self.x_discrimination = nn.Sequential(
+            sn(nn.Linear(emb_size, 128)),
             # size: 1 x 32 x 128
 
             sn(nn.Conv2d(1, num_features, 4, 2, 1, bias=use_bias)),
