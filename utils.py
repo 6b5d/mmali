@@ -1,4 +1,5 @@
 import math
+from collections import Counter, OrderedDict
 from itertools import chain, combinations
 
 import numpy as np
@@ -199,3 +200,13 @@ def cca(views, k=None, eps=1e-12):
     proj_matrices = torch.split(torch.from_numpy(eigenvectors.real).type_as(views[0]), os)
 
     return correlations, proj_matrices
+
+
+class OrderedCounter(Counter, OrderedDict):
+    """Counter that remembers the order elements are first encountered."""
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, OrderedDict(self))
+
+    def __reduce__(self):
+        return self.__class__, (OrderedDict(self),)

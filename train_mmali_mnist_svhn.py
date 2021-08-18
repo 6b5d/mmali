@@ -382,6 +382,7 @@ def main():
         models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim),
     ])
     joint_discriminator = models.mnist_svhn.XXDiscriminator(img_shape=mnist_img_shape, channels=svhn_channels)
+    # joint_discriminator = models.mnist_svhn.XXDiscriminatorConv()
 
     model = models.mmali.FactorModelDoubleSemi(
         encoders={
@@ -467,11 +468,13 @@ def main():
             }, train_d=True, joint=False, progress=progress))
 
             x1, x2 = next(paired_dataloader)
-            # unpaired_x1 = utils.permute_dim(x1, dim=0)
-            # unpaired_x2 = utils.permute_dim(x2, dim=0)
+            unpaired_x1 = utils.permute_dim(x1, dim=0)
+            unpaired_x2 = utils.permute_dim(x2, dim=0)
 
-            unpaired_x1, _ = next(x1_dataloader)
-            unpaired_x2, _ = next(x2_dataloader)
+            # unpaired_x1, _ = next(x1_dataloader)
+            # unpaired_x2, _ = next(x2_dataloader)
+            # unpaired_x1 = utils.permute_dim(unpaired_x1, dim=0)
+            # unpaired_x2 = utils.permute_dim(unpaired_x2, dim=0)
 
             x1, x2 = x1.to(device), x2.to(device)
             unpaired_x1, unpaired_x2 = unpaired_x1.to(device), unpaired_x2.to(device)
@@ -515,9 +518,9 @@ def main():
         for _ in range(opt.gen_iter):
             g_losses = {}
 
-            # x1, x2 = next(paired_dataloader)
-            x1, _ = next(x1_dataloader)
-            x2, _ = next(x2_dataloader)
+            x1, x2 = next(paired_dataloader)
+            # x1, _ = next(x1_dataloader)
+            # x2, _ = next(x2_dataloader)
             # x1, _ = next(x1_subsetloader)
             # x2, _ = next(x2_subsetloader)
 
@@ -599,7 +602,6 @@ def main():
             try:
                 eval_latent(n_iter)
                 eval_generation(n_iter)
-
             except:
                 print('Something wrong during evaluation')
 
@@ -615,7 +617,6 @@ def main():
     try:
         eval_latent(n_iter)
         eval_generation(n_iter)
-
     except:
         print('Something wrong during evaluation')
 

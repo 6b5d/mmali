@@ -74,22 +74,20 @@ class FactorModelDoubleSemi(nn.Module):
 
             scores[modality_key] = [score1, score2]
 
-        score_sum = score_joint + torch.sum(torch.stack([s[1] - s[0]  # q(x, s) p(c) : p(x, s, c)
+        score_sum = score_joint + torch.sum(torch.stack([s[0] - s[1]  # q(x, s) p(c) : p(x, s, c)
                                                          for s in scores.values()], dim=0), dim=0)
 
         joint_score = []
         for modality_key in self.sorted_keys:
-            s = scores[modality_key]
             # q(x, s, c) : q(x, s) p(c)
-            score = s[1]
+            score = scores[modality_key][1]
             joint_score.append(score)
 
         joint_score.append(-score_sum)
 
         for modality_key in self.sorted_keys:
-            s = scores[modality_key]
             # q(x, s, c) : p(x, s, c)
-            score = s[0]
+            score = scores[modality_key][0]
             joint_score.append(score - score_sum)
 
         return torch.cat(joint_score, dim=1)

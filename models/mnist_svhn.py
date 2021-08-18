@@ -38,10 +38,10 @@ class XXDiscriminator(nn.Module):
         )
 
         self.joint_discriminator = nn.Sequential(
-            sn(nn.Linear(512, 512)),
+            sn(nn.Linear(512, 1024)),
             nn.LeakyReLU(0.2, inplace=True),
 
-            sn(nn.Linear(512, output_dim)),
+            sn(nn.Linear(1024, output_dim)),
         )
 
     def forward(self, x1, x2):

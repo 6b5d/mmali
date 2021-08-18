@@ -84,19 +84,13 @@ class XZDiscriminator(nn.Module):
         self.z_discrimination = nn.Sequential(
             sn(nn.Linear(latent_dim, 256)),
             nn.LeakyReLU(0.2, inplace=True),
-
-            # sn(nn.Linear(256, 256)),
-            # nn.LeakyReLU(0.2, inplace=True),
         )
 
         self.joint_discriminator = nn.Sequential(
-            sn(nn.Linear(512, 512)),
+            sn(nn.Linear(512, 1024)),
             nn.LeakyReLU(0.2, inplace=True),
 
-            # sn(nn.Linear(1024, 1024)),
-            # nn.LeakyReLU(0.2, inplace=True),
-
-            sn(nn.Linear(512, output_dim)),
+            sn(nn.Linear(1024, output_dim)),
         )
 
     def forward(self, x, z):
