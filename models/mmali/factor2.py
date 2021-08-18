@@ -198,6 +198,7 @@ class FactorModelDoubleSemi(nn.Module):
                     dis_score = self.calc_joint_score(curr_inputs, score_q)
                     adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                                   for i in range(dis_score.size(1)) if i != label_value]
+                    # TODO: torch.sum or torch.mean?
                     losses['joint_q{}'.format(label_value)] = torch.mean(torch.stack(adv_losses, dim=0), dim=0)
 
                     label_value += 1
