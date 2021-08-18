@@ -44,7 +44,7 @@ def main():
     emb_size = 128
     len_window = 3
     epochs = 10
-    model_name = 'fasttext'
+
     sym_exc = '<exc>'
     sym_pad = '<pad>'
     sym_eos = '<eos>'
@@ -111,7 +111,7 @@ def main():
         'std': train_std,
     }, os.path.join(dataroot, 'cub/processed/cub-cap-test.pt'))
 
-    model.save(os.path.join(dataroot, 'cub/processed/{}.model'.format(model_name)))
+    model.save(os.path.join(dataroot, 'cub/processed/fasttext.model'))
 
 
 if __name__ == '__main__':

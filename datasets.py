@@ -165,9 +165,8 @@ class CUBCaption(data.Dataset):
 
 
 class CUBCaptionVector(data.Dataset):
-    def __init__(self, root, model='fasttext', split='train', normalization=None, transform=None):
+    def __init__(self, root, split='train', normalization=None, transform=None):
         super().__init__()
-        assert model in ['fasttext', 'word2vec']
         assert split in ['train', 'test']
 
         self.root = root
@@ -175,10 +174,7 @@ class CUBCaptionVector(data.Dataset):
         self.normalization = normalization
         self.transform = transform
 
-        if model == 'fasttext':
-            self.model = gensim.models.FastText.load(os.path.join(self.root, 'cub/processed/fasttext.model'))
-        elif model == 'word2vec':
-            self.model = gensim.models.Word2Vec.load(os.path.join(self.root, 'cub/processed/word2vec.model'))
+        self.model = gensim.models.FastText.load(os.path.join(self.root, 'cub/processed/fasttext.model'))
 
         d = torch.load(os.path.join(self.root,
                                     'cub/processed/cub-cap-{}.pt'.format(split)), map_location='cpu')
