@@ -6,8 +6,10 @@ import torch
 from gensim.models import FastText
 from nltk.tokenize import sent_tokenize, word_tokenize
 
+from utils import OrderedCounter
 
-def preprocess(list_of_words, seq_len=32, sym_pad='<pad>', sym_eos='<eos>'):
+
+def preprocess(list_of_words, unq_words, seq_len=32, sym_exc='<exc>', sym_pad='<pad>', sym_eos='<eos>'):
     processed_list_of_words = []
     for words in list_of_words:
         words_trunc = words[:seq_len - 1]
@@ -16,15 +18,20 @@ def preprocess(list_of_words, seq_len=32, sym_pad='<pad>', sym_eos='<eos>'):
         if seq_len > word_len:
             words_trunc.extend([sym_pad] * (seq_len - word_len))
 
-        processed_list_of_words.append(words_trunc)
+        processed_list_of_words.append(list(map(lambda w: sym_exc if w in unq_words else w, words_trunc)))
     return processed_list_of_words
 
 
-def convert(texts, model, seq_len, emb_size):
+def convert(texts, model, seq_len, emb_size,
+            sym_exc='<exc>', sym_pad='<pad>', sym_eos='<eos>', use_fixed=False):
+    w2i = {sym_exc: -1, sym_pad: 0, sym_eos: 1}
     dataset = np.zeros(shape=(len(texts), seq_len, emb_size), dtype='float32')
     for i, words in enumerate(texts):
         for j, w in enumerate(words[:seq_len]):
-            dataset[i][j] = model.wv.get_vector(w)
+            if use_fixed and w in w2i.keys():
+                dataset[i][j] = w2i[w] * np.ones(emb_size, dtype='float32')
+            else:
+                dataset[i][j] = model.wv[w]
 
     dataset = dataset.reshape((-1, 1, seq_len, emb_size))
     return dataset
@@ -38,29 +45,41 @@ def main():
     len_window = 3
     epochs = 10
     model_name = 'fasttext'
+    sym_exc = '<exc>'
     sym_pad = '<pad>'
     sym_eos = '<eos>'
 
     # train set
     with open(os.path.join(dataroot, 'cub/text_trainvalclasses.txt'), 'r') as file:
         sentences = sent_tokenize(file.read())
+        list_of_words_train = [word_tokenize(s) for s in sentences]
 
-    list_of_words = [word_tokenize(s) for s in sentences]
-    list_of_words = preprocess(list_of_words, seq_len=seq_len, sym_pad=sym_pad, sym_eos=sym_eos)
+    occ_register = OrderedCounter()
+    unq_words = []
+    for words in list_of_words_train:
+        occ_register.update(words)
+
+    for word, occ in occ_register.items():
+        if occ <= min_count:
+            unq_words.append(word)
+
+    list_of_words_train = preprocess(list_of_words_train, unq_words,
+                                     seq_len=seq_len, sym_exc=sym_exc, sym_pad=sym_pad, sym_eos=sym_eos)
 
     model = FastText(size=emb_size, window=len_window, min_count=min_count)
-    model.build_vocab(sentences=list_of_words)
-    model.train(sentences=list_of_words, total_examples=len(list_of_words), epochs=epochs)
+    model.build_vocab(sentences=list_of_words_train)
+    model.train(sentences=list_of_words_train, total_examples=len(list_of_words_train), epochs=epochs)
 
-    dataset_train = convert(list_of_words, model, seq_len, emb_size)
+    dataset_train = convert(list_of_words_train, model, seq_len, emb_size)
 
     # test set
     with open(os.path.join(dataroot, 'cub/text_testclasses.txt'), 'r') as file:
         sentences = sent_tokenize(file.read())
+        list_of_words_test = [word_tokenize(s) for s in sentences]
 
-    list_of_words = [word_tokenize(s) for s in sentences]
-    list_of_words = preprocess(list_of_words, seq_len=seq_len, sym_pad=sym_pad, sym_eos=sym_eos)
-    dataset_test = convert(list_of_words, model, seq_len, emb_size)
+    list_of_words_test = preprocess(list_of_words_test, unq_words,
+                                    seq_len=seq_len, sym_exc=sym_exc, sym_pad=sym_pad, sym_eos=sym_eos)
+    dataset_test = convert(list_of_words_test, model, seq_len, emb_size)
 
     dataset_train = torch.from_numpy(dataset_train)
     dataset_test = torch.from_numpy(dataset_test)

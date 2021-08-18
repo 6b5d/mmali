@@ -3,7 +3,6 @@ import os
 import shutil
 import subprocess
 
-import torch.nn as nn
 import torch.utils.data
 import torch.utils.tensorboard
 import torchvision.datasets
@@ -33,31 +32,6 @@ with open(os.path.join(output_dir, 'args.txt'), 'w') as f:
     print(opt, file=f)
 writer = torch.utils.tensorboard.SummaryWriter(log_dir=output_dir)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-
-class JointDis(nn.Module):
-    def __init__(self, input_dim):
-        super().__init__()
-        # self.z = nn.Sequential(
-        #     nn.utils.spectral_norm(nn.Linear(input_dim // 2, 512)),
-        #     nn.LeakyReLU(),
-        #
-        #     nn.utils.spectral_norm(nn.Linear(512, 512)),
-        #     nn.LeakyReLU(),
-        # )
-
-        self.model = nn.Sequential(
-            nn.utils.spectral_norm(nn.Linear(input_dim, 512)),
-            nn.LeakyReLU(),
-
-            nn.utils.spectral_norm(nn.Linear(512, 512)),
-            nn.LeakyReLU(),
-
-            nn.utils.spectral_norm(nn.Linear(512, 1)),
-        )
-
-    def forward(self, z):
-        return self.model(z)
 
 
 @torch.no_grad()
@@ -159,14 +133,6 @@ def main():
                                        latent_dim=opt.latent_dim)
         discriminator = models.mnist.XZDiscriminator(img_shape=mnist_img_shape,
                                                      latent_dim=opt.latent_dim, output_dim=3)
-        # discriminator = nn.Sequential(
-        #     nn.Linear(opt.latent_dim, 512),
-        #     nn.LeakyReLU(),
-        #     nn.Linear(512, 512),
-        #     nn.LeakyReLU(),
-        #     # nn.utils.spectral_norm(nn.Linear(512, 1)),
-        #     nn.Linear(512, 1),
-        # )
     elif opt.dataset == 'svhn':
         dataset = torchvision.datasets.SVHN(opt.dataroot,
                                             split='train',
@@ -179,15 +145,16 @@ def main():
         discriminator = models.svhn.XZDiscriminator(channels=svhn_channels,
                                                     latent_dim=opt.latent_dim)
     elif opt.dataset == 'cub_image':
-        dataset = torchvision.datasets.ImageFolder(os.path.join(opt.dataroot, 'cub/train'),
-                                                   transform=torchvision.transforms.Compose([
-                                                       torchvision.transforms.Resize(64),
-                                                       torchvision.transforms.ToTensor(),
-                                                   ]))
-        encoder = models.cub_image.Encoder64(latent_dim=opt.latent_dim if opt.deterministic else 2 * opt.latent_dim,
-                                             channels=cub_img_channels)
-        decoder = models.cub_image.Decoder64(latent_dim=opt.latent_dim, channels=cub_img_channels)
-        discriminator = models.cub_image.XZDiscriminator64(latent_dim=opt.latent_dim, channels=cub_img_channels)
+        # dataset = torchvision.datasets.ImageFolder(os.path.join(opt.dataroot, 'cub/train'),
+        #                                            transform=torchvision.transforms.Compose([
+        #                                                torchvision.transforms.Resize(64),
+        #                                                torchvision.transforms.ToTensor(),
+        #                                            ]))
+        # encoder = models.cub_image.Encoder64(latent_dim=opt.latent_dim if opt.deterministic else 2 * opt.latent_dim,
+        #                                      channels=cub_img_channels)
+        # decoder = models.cub_image.Decoder64(latent_dim=opt.latent_dim, channels=cub_img_channels)
+        # discriminator = models.cub_image.XZDiscriminator64(latent_dim=opt.latent_dim, channels=cub_img_channels)
+        raise NotImplementedError
     else:
         raise NotImplementedError
 
@@ -205,9 +172,6 @@ def main():
     model = models.ali.Model(encoder=encoder,
                              decoder=decoder,
                              discriminator=discriminator,
-                             dis_loss=models.ali.dis_svae,
-                             gen_loss=models.ali.gen_svae,
-                             # lambda_gp=(0.1, 0.01),
                              lambda_x_rec=opt.lambda_x_rec,
                              lambda_z_rec=opt.lambda_c_rec)
 
@@ -241,6 +205,7 @@ def main():
     model.train()
     for n_iter in range(start_iter, opt.max_iter):
         progress = n_iter / (opt.max_iter - 1)
+        # D update
         d_loss_iter_avg = 0.0
         d_losses_iter_avg = {}
         for _ in range(opt.dis_iter):
@@ -268,24 +233,38 @@ def main():
             d_losses_iter_avg[k] /= opt.dis_iter
 
         # G update
-        g_losses = {}
-        x, _ = next(dataloader)
-        x = x.to(device)
-        z = torch.randn(x.size(0), opt.latent_dim).to(device)
-        g_losses.update(model(x, z, train_d=False, progress=progress))
-        g_loss = sum(g_losses.values())
-        optimizer_G.zero_grad(set_to_none=True)
-        g_loss.backward()
-        optimizer_G.step()
+        g_loss_iter_avg = 0.0
+        g_losses_iter_avg = {}
+        for _ in range(opt.gen_iter):
+            g_losses = {}
+            x, _ = next(dataloader)
+            x = x.to(device)
+            z = torch.randn(x.size(0), opt.latent_dim).to(device)
+            g_losses.update(model(x, z, train_d=False, progress=progress))
+            g_loss = sum(g_losses.values())
+            optimizer_G.zero_grad(set_to_none=True)
+            g_loss.backward()
+            optimizer_G.step()
+
+            g_loss_iter_avg += g_loss.item()
+            for k in g_losses.keys():
+                if k in g_losses_iter_avg:
+                    g_losses_iter_avg[k] += g_losses[k].item()
+                else:
+                    g_losses_iter_avg[k] = g_losses[k].item()
+
+        g_loss_iter_avg /= opt.gen_iter
+        for k in g_losses_iter_avg.keys():
+            g_losses_iter_avg[k] /= opt.gen_iter
 
         d_loss = d_loss_iter_avg
-        g_loss = g_loss.item()
+        g_loss = g_loss_iter_avg
         print(
             '[Iter {:d}/{:d}] [D loss: {:f}] [G loss: {:f}]'.format(n_iter, opt.max_iter, d_loss, g_loss),
         )
 
         d_losses = d_losses_iter_avg
-        g_losses = {k: v.item() for k, v in g_losses.items()}
+        g_losses = g_losses_iter_avg
         writer.add_scalars('dis', d_losses, global_step=n_iter)
         writer.add_scalars('gen', g_losses, global_step=n_iter)
         writer.add_scalars('loss', {'d_loss': d_loss, 'g_loss': g_loss}, global_step=n_iter)
