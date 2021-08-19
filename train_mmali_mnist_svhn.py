@@ -450,9 +450,9 @@ def main():
         for _ in range(opt.dis_iter):
             d_losses = {}
 
-            # x1, x2 = next(paired_dataloader)
-            x1, _ = next(x1_dataloader)
-            x2, _ = next(x2_dataloader)
+            x1, x2 = next(paired_dataloader)
+            # x1, _ = next(x1_dataloader)
+            # x2, _ = next(x2_dataloader)
 
             x1, x2 = x1.to(device), x2.to(device)
 
