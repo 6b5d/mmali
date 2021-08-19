@@ -438,8 +438,8 @@ def main():
 
     x1_discriminator = models.mnist.XZDiscriminator(latent_dim=opt.latent_dim, img_shape=mnist_img_shape, output_dim=4)
     x2_discriminator = models.svhn.XZDiscriminator(latent_dim=opt.latent_dim, channels=svhn_channels, output_dim=4)
-    # joint_discriminator = models.mnist_svhn.XXDiscriminator(img_shape=mnist_img_shape, channels=svhn_channels)
-    joint_discriminator = models.mnist_svhn.XXDiscriminatorConv()
+    joint_discriminator = models.mnist_svhn.XXDiscriminator(img_shape=mnist_img_shape, channels=svhn_channels)
+    # joint_discriminator = models.mnist_svhn.XXDiscriminatorConv()
 
     model = models.mmali.FactorModel(
         encoders={
@@ -507,9 +507,9 @@ def main():
         for _ in range(opt.dis_iter):
             d_losses = {}
 
-            # x1, x2 = next(paired_dataloader)
-            x1, _ = next(x1_dataloader)
-            x2, _ = next(x2_dataloader)
+            x1, x2 = next(paired_dataloader)
+            # x1, _ = next(x1_dataloader)
+            # x2, _ = next(x2_dataloader)
 
             x1, x2 = x1.to(device), x2.to(device)
 
@@ -525,11 +525,11 @@ def main():
             }, train_d=True, joint=False, progress=progress))
 
             x1, x2 = next(paired_dataloader)
-            # unpaired_x1 = utils.permute_dim(x1, dim=0)
-            # unpaired_x2 = utils.permute_dim(x2, dim=0)
+            unpaired_x1 = utils.permute_dim(x1, dim=0)
+            unpaired_x2 = utils.permute_dim(x2, dim=0)
 
-            unpaired_x1, _ = next(x1_dataloader)
-            unpaired_x2, _ = next(x2_dataloader)
+            # unpaired_x1, _ = next(x1_dataloader)
+            # unpaired_x2, _ = next(x2_dataloader)
 
             x1, x2 = x1.to(device), x2.to(device)
             unpaired_x1, unpaired_x2 = unpaired_x1.to(device), unpaired_x2.to(device)
@@ -568,56 +568,70 @@ def main():
             d_losses_iter_avg[k] = d_losses_iter_avg[k] / opt.dis_iter
 
         # G update
-        g_losses = {}
+        g_loss_iter_avg = 0.0
+        g_losses_iter_avg = {}
+        for _ in range(opt.gen_iter):
+            g_losses = {}
 
-        # x1, x2 = next(paired_dataloader)
-        x1, _ = next(x1_dataloader)
-        x2, _ = next(x2_dataloader)
-        # x1, _ = next(x1_subsetloader)
-        # x2, _ = next(x2_subsetloader)
+            x1, x2 = next(paired_dataloader)
+            # x1, _ = next(x1_dataloader)
+            # x2, _ = next(x2_dataloader)
+            # x1, _ = next(x1_subsetloader)
+            # x2, _ = next(x2_subsetloader)
 
-        x1, x2 = x1.to(device), x2.to(device)
-        g_losses.update(model({
-            key_mnist: {
-                'x': x1,
-                'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
-            },
-            key_svhn: {
-                'x': x2,
-                'z': torch.randn(opt.batch_size, opt.latent_dim).to(device)
-            },
-        }, train_d=False, joint=False, progress=progress))
+            x1, x2 = x1.to(device), x2.to(device)
+            g_losses.update(model({
+                key_mnist: {
+                    'x': x1,
+                    'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
+                },
+                key_svhn: {
+                    'x': x2,
+                    'z': torch.randn(opt.batch_size, opt.latent_dim).to(device)
+                },
+            }, train_d=False, joint=False, progress=progress))
 
-        x1, x2 = next(paired_dataloader)
-        x1, x2 = x1.to(device), x2.to(device)
-        s1 = torch.randn(opt.batch_size, opt.style_dim).to(device)
-        s2 = torch.randn(opt.batch_size, opt.style_dim).to(device)
-        c = torch.randn(opt.batch_size, opt.latent_dim - opt.style_dim).to(device)
-        g_losses.update(model({
-            key_mnist: {
-                'x': x1,
-                'z': torch.cat([s1, c], dim=1),
-            },
-            key_svhn: {
-                'x': x2,
-                'z': torch.cat([s2, c], dim=1),
-            },
-        }, train_d=False, joint=True, progress=progress))
+            x1, x2 = next(paired_dataloader)
+            x1, x2 = x1.to(device), x2.to(device)
+            s1 = torch.randn(opt.batch_size, opt.style_dim).to(device)
+            s2 = torch.randn(opt.batch_size, opt.style_dim).to(device)
+            c = torch.randn(opt.batch_size, opt.latent_dim - opt.style_dim).to(device)
+            g_losses.update(model({
+                key_mnist: {
+                    'x': x1,
+                    'z': torch.cat([s1, c], dim=1),
+                },
+                key_svhn: {
+                    'x': x2,
+                    'z': torch.cat([s2, c], dim=1),
+                },
+            }, train_d=False, joint=True, progress=progress))
 
-        g_loss = sum(g_losses.values())
-        optimizer_G.zero_grad(set_to_none=True)
-        g_loss.backward()
-        optimizer_G.step()
+            g_loss = sum(g_losses.values())
+            optimizer_G.zero_grad(set_to_none=True)
+            g_loss.backward()
+            optimizer_G.step()
+
+            g_loss_iter_avg += g_loss.item()
+            for k in g_losses.keys():
+                if k in g_losses_iter_avg:
+                    g_losses_iter_avg[k] += g_losses[k].item()
+                else:
+                    g_losses_iter_avg[k] = g_losses[k].item()
+
+        g_loss_iter_avg /= opt.gen_iter
+        for k in g_losses_iter_avg.keys():
+            g_losses_iter_avg[k] = g_losses_iter_avg[k] / opt.gen_iter
 
         d_loss = d_loss_iter_avg
-        g_loss = g_loss.item()
+        g_loss = g_loss_iter_avg
 
         print(
             '[Iter {:d}/{:d}] [D loss: {:f}] [G loss: {:f}]'.format(n_iter, opt.max_iter, d_loss, g_loss),
         )
 
         d_losses = d_losses_iter_avg
-        g_losses = {k: v.item() for k, v in g_losses.items()}
+        g_losses = g_losses_iter_avg
         writer.add_scalars('dis', d_losses, global_step=n_iter)
         writer.add_scalars('gen', g_losses, global_step=n_iter)
         writer.add_scalars('loss', {'d_loss': d_loss, 'g_loss': g_loss}, global_step=n_iter)
@@ -643,7 +657,6 @@ def main():
             try:
                 eval_latent(n_iter)
                 eval_generation(n_iter)
-                # eval_prdc(n_iter)
             except:
                 print('Something wrong during evaluation')
 
@@ -659,7 +672,6 @@ def main():
     try:
         eval_latent(n_iter)
         eval_generation(n_iter)
-        # eval_prdc(n_iter)
     except:
         print('Something wrong during evaluation')
 

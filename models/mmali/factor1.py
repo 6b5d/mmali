@@ -7,8 +7,7 @@ import utils
 
 class FactorModel(nn.Module):
     def __init__(self, encoders, decoders, xz_discriminators, joint_discriminator,
-                 content_dim=20, lambda_unimodal=0.0, lambda_x_rec=0.0, lambda_c_rec=0.0, lambda_s_rec=0.0,
-                 lambda_gp=(0., 0.)):
+                 content_dim=20, lambda_unimodal=1.0, lambda_x_rec=0.0, lambda_c_rec=0.0, lambda_s_rec=0.0):
         super().__init__()
 
         assert len(encoders.items()) == len(decoders.items())
@@ -33,7 +32,6 @@ class FactorModel(nn.Module):
         self.lambda_x_rec = lambda_x_rec
         self.lambda_c_rec = lambda_c_rec
         self.lambda_s_rec = lambda_s_rec
-        self.lambda_gp = lambda_gp
 
         self.n_modalities = len(encoders.items())
 
@@ -72,13 +70,13 @@ class FactorModel(nn.Module):
 
             scores[modality_key] = discriminator(x, z)
 
-        score_sum = score_joint + torch.sum(torch.stack([s[:, -1] - s[:, 1]  # q(x, s) p(c)/ p(x, s, c)
+        score_sum = score_joint + torch.sum(torch.stack([s[:, -1] - s[:, 1]  # q(x, s) p(c) : p(x, s, c)
                                                          for s in scores.values()], dim=0), dim=0)
 
         joint_score = []
         for modality_key in self.sorted_keys:
             s = scores[modality_key]
-            # q(x, s, c) / (q(x, s) p(c))
+            # q(x, s, c) : q(x, s) p(c)
             # score = score_sum + (s[:, 0] - s[:, -1])
             score = s[:, 0] - s[:, -1]
             joint_score.append(score)
@@ -144,7 +142,7 @@ class FactorModel(nn.Module):
                         label_value += 1
             else:
                 gen_inputs = {}
-                with torch.set_grad_enabled(True):
+                with torch.set_grad_enabled(False):
                     for modality_key in self.sorted_keys:
                         encoder = getattr(self.encoders, modality_key)
                         decoder = getattr(self.decoders, modality_key)
@@ -186,7 +184,7 @@ class FactorModel(nn.Module):
                         discriminator(real_x_shuffled, cs_shuffled), (1 + self.n_modalities) * label_ones)
         else:
             gen_inputs = {}
-            with torch.set_grad_enabled(not train_d):
+            with torch.set_grad_enabled(True):
                 for modality_key in self.sorted_keys:
                     encoder = getattr(self.encoders, modality_key).module
                     decoder = getattr(self.decoders, modality_key)
@@ -259,8 +257,8 @@ class FactorModel(nn.Module):
                                       for i in range(dis_other.size(1)) if i != label_value]
 
                         losses['{}_c{}'.format(modality_key, label_value)] = self.lambda_unimodal * torch.mean(
-                            torch.stack(adv_losses, dim=0),
-                            dim=0)
+                            torch.stack(adv_losses, dim=0), dim=0)
+
                         label_value += 1
 
                 if self.lambda_c_rec > 0.0:
@@ -322,16 +320,6 @@ class FactorModel(nn.Module):
                                   for i in range(dis_1.size(1)) if i != label_value]
                     losses['{}_c1'.format(modality_key)] = self.lambda_unimodal * torch.mean(torch.stack(adv_losses,
                                                                                                          dim=0), dim=0)
-
-                # if self.lambda_x_rec > 0.0:
-                #     for k in self.sorted_keys:
-                #         decoder = getattr(self.decoders, k)
-                #         x_real = real_inputs[k]['x']
-                #         z_enc = gen_inputs[k]['z']
-                #         x_rec = decoder(z_enc)
-                #
-                #         x_rec_loss = (x_rec - x_real).square().mean()
-                #         losses['{}_x_rec_unimodal'.format(k)] = self.lambda_x_rec * x_rec_loss
 
                 if self.lambda_s_rec > 0.0:
                     for k in self.sorted_keys:
