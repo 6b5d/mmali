@@ -107,17 +107,6 @@ class FactorModelDoubleSemi(nn.Module):
         losses = {}
         if train_d:
             if joint:
-                gen_inputs = {}
-                with torch.set_grad_enabled(False):
-                    for modality_key in self.sorted_keys:
-                        encoder = getattr(self.encoders, modality_key)
-
-                        real_x = real_inputs[modality_key]['x']
-
-                        enc_z = encoder(real_x)
-
-                        gen_inputs[modality_key] = {'z': enc_z}
-
                 joint_inputs = [real_inputs[k]['x'] for k in self.sorted_keys]
                 shuffled_inputs = [real_inputs[k]['extra_x'] for k in self.sorted_keys]
 
@@ -305,6 +294,8 @@ class FactorModelDoubleSemi(nn.Module):
 
         return losses
 
+    def forward_kl(self, real_inputs, train_d=True, joint=False, progress=None):
+        pass
     #
     # def forward_mi_nondet(self, real_inputs, train_d=True, joint=False, progress=None):
     #     self.generators.requires_grad_(not train_d)
