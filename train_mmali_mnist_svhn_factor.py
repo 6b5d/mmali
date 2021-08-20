@@ -653,7 +653,7 @@ def main():
 
             model.train()
 
-        if (not opt.no_eval) and (n_iter % opt.eval_interval == 0):
+        if not opt.no_eval and n_iter > 0 and n_iter % opt.eval_interval == 0:
             try:
                 eval_latent(n_iter)
                 eval_generation(n_iter)
