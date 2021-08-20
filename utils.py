@@ -137,6 +137,32 @@ def calc_gaussian_entropy(logvar, dim=-1):
     return 0.5 * math.log(2 * math.pi * math.e) + 0.5 * torch.sum(logvar, dim=dim)
 
 
+def calc_log_ratio_diag_gaussian(x, mean1, logvar1, mean2, logvar2, dim=-1):
+    var1 = torch.exp(logvar1)
+    var2 = torch.exp(logvar2)
+    x_square = x.square()
+
+    val1 = -0.5 * torch.sum(logvar1, dim=dim)
+    val2 = -0.5 * torch.sum(logvar2, dim=dim)
+
+    val3 = -0.5 * (torch.sum(var1 * x_square, dim=dim)
+                   - 2 * torch.sum(var1 * x * mean1, dim=dim)
+                   + torch.sum(var1 * mean1.square(), dim=dim))
+
+    val4 = -0.5 * (torch.sum(var2 * x_square, dim=dim)
+                   - 2 * torch.sum(var2 * x * mean2, dim=dim)
+                   + torch.sum(var2 * mean2.square(), dim=dim))
+
+    return val1 - val2 + val3 - val4
+
+
+def calc_log_ratio_gaussian(x, mean1, cov1, mean2, cov2):
+    gaussian1 = torch.distributions.MultivariateNormal(mean1, covariance_matrix=cov1)
+    gaussian2 = torch.distributions.MultivariateNormal(mean2, covariance_matrix=cov2)
+
+    return gaussian1.log_prob(x) - gaussian2.log_prob(x)
+
+
 def calc_kl_divergence(mu0, logvar0, mu1=None, logvar1=None):
     if mu1 is None or logvar1 is None:
         KLD = -0.5 * torch.sum(1 - logvar0.exp() - mu0.pow(2) + logvar0)
