@@ -132,7 +132,7 @@ def main():
         decoder = models.mnist.Decoder(img_shape=mnist_img_shape,
                                        latent_dim=opt.latent_dim)
         discriminator = models.mnist.XZDiscriminator(img_shape=mnist_img_shape,
-                                                     latent_dim=opt.latent_dim, output_dim=3)
+                                                     latent_dim=opt.latent_dim)
     elif opt.dataset == 'svhn':
         dataset = torchvision.datasets.SVHN(opt.dataroot,
                                             split='train',
