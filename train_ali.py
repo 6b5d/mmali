@@ -144,21 +144,8 @@ def main():
                                       latent_dim=opt.latent_dim)
         discriminator = models.svhn.XZDiscriminator(channels=svhn_channels,
                                                     latent_dim=opt.latent_dim)
-    elif opt.dataset == 'cub_image':
-        # dataset = torchvision.datasets.ImageFolder(os.path.join(opt.dataroot, 'cub/train'),
-        #                                            transform=torchvision.transforms.Compose([
-        #                                                torchvision.transforms.Resize(64),
-        #                                                torchvision.transforms.ToTensor(),
-        #                                            ]))
-        # encoder = models.cub_image.Encoder64(latent_dim=opt.latent_dim if opt.deterministic else 2 * opt.latent_dim,
-        #                                      channels=cub_img_channels)
-        # decoder = models.cub_image.Decoder64(latent_dim=opt.latent_dim, channels=cub_img_channels)
-        # discriminator = models.cub_image.XZDiscriminator64(latent_dim=opt.latent_dim, channels=cub_img_channels)
-        raise NotImplementedError
     else:
         raise NotImplementedError
-
-    # discriminator = JointDis(opt.latent_dim)
 
     dataloader = iter(torch.utils.data.DataLoader(dataset,
                                                   batch_size=opt.batch_size,
@@ -283,9 +270,11 @@ def main():
 
             model.train()
 
-        # if (not opt.no_eval) and (n_iter % opt.eval_interval == 0):
-        #     eval_latent(n_iter)
-        #     eval_prdc(n_iter)
+        if not opt.no_eval and n_iter > 0 and n_iter % opt.eval_interval == 0:
+            try:
+                eval_latent(n_iter)
+            except:
+                print('Something wrong during evaluation')
 
     if not opt.deterministic:
         x, _ = next(dataloader)
@@ -295,12 +284,11 @@ def main():
     save_samples(model_ema, fixed_x, fixed_z, n_iter)
     save_checkpoint(n_iter, model, model_ema, optimizer_D, optimizer_G)
 
-    # if (not opt.no_eval) and (n_iter % opt.eval_interval == 0):
-    #     eval_latent(n_iter)
-    #     eval_prdc(n_iter)
-
-    eval_latent(n_iter)
-    eval_prdc(n_iter)
+    if not opt.no_eval:
+        try:
+            eval_latent(n_iter)
+        except:
+            print('Something wrong during evaluation')
 
 
 if __name__ == '__main__':
