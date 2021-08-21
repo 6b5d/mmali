@@ -51,7 +51,10 @@ def save_samples(model, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter)
     x1_samples = [fixed_x1]
     x2_samples = [fixed_x2]
 
-    if not opt.deterministic:
+    if opt.deterministic:
+        z1_sample = mnist_encoder(fixed_x1)
+        z2_sample = svhn_encoder(fixed_x2)
+    else:
         mnist_encoder = mnist_encoder.module
         svhn_encoder = svhn_encoder.module
         z1 = mnist_encoder(fixed_x1)
@@ -63,9 +66,6 @@ def save_samples(model, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter)
         z2_sample = utils.reparameterize(z2)
         avg_joint_z_sample = utils.reparameterize(avg_joint_z)
         poe_joint_z_sample = utils.reparameterize(poe_joint_z)
-    else:
-        z1_sample = mnist_encoder(fixed_x1)
-        z2_sample = svhn_encoder(fixed_x2)
 
     if opt.style_dim > 0:
         enc_s1 = z1_sample[:, :opt.style_dim]
@@ -74,56 +74,78 @@ def save_samples(model, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter)
         enc_s2 = z2_sample[:, :opt.style_dim]
         enc_c2 = z2_sample[:, opt.style_dim:]
 
-        avg_joint_c = avg_joint_z_sample[:, opt.style_dim:]
-        poe_joint_c = poe_joint_z_sample[:, opt.style_dim:]
+        if not opt.deterministic:
+            avg_joint_c = avg_joint_z_sample[:, opt.style_dim:]
+            poe_joint_c = poe_joint_z_sample[:, opt.style_dim:]
 
         # enc_style, x1
         enc_style_rec_x1 = mnist_decoder(torch.cat([enc_s1, enc_c1], dim=1))
         enc_style_cross_rec_x1 = mnist_decoder(torch.cat([enc_s1, enc_c2], dim=1))
-        enc_style_avg_joint_rec_x1 = mnist_decoder(torch.cat([enc_s1, avg_joint_c], dim=1))
-        enc_style_poe_joint_rec_x1 = mnist_decoder(torch.cat([enc_s1, poe_joint_c], dim=1))
+        if not opt.deterministic:
+            enc_style_avg_joint_rec_x1 = mnist_decoder(torch.cat([enc_s1, avg_joint_c], dim=1))
+            enc_style_poe_joint_rec_x1 = mnist_decoder(torch.cat([enc_s1, poe_joint_c], dim=1))
         enc_style_joint_gen_x1 = mnist_decoder(torch.cat([enc_s1, fixed_c], dim=1))
 
         # fixed_style, x1
         fixed_style_rec_x1 = mnist_decoder(torch.cat([fixed_s1, enc_c1], dim=1))
         fixed_style_cross_rec_x1 = mnist_decoder(torch.cat([fixed_s1, enc_c2], dim=1))
-        fixed_style_avg_joint_rec_x1 = mnist_decoder(torch.cat([fixed_s1, avg_joint_c], dim=1))
-        fixed_style_poe_joint_rec_x1 = mnist_decoder(torch.cat([fixed_s1, poe_joint_c], dim=1))
+        if not opt.deterministic:
+            fixed_style_avg_joint_rec_x1 = mnist_decoder(torch.cat([fixed_s1, avg_joint_c], dim=1))
+            fixed_style_poe_joint_rec_x1 = mnist_decoder(torch.cat([fixed_s1, poe_joint_c], dim=1))
         fixed_style_joint_gen_x1 = mnist_decoder(torch.cat([fixed_s1, fixed_c], dim=1))
 
         # enc_style, x2
         enc_style_rec_x2 = svhn_decoder(torch.cat([enc_s2, enc_c2], dim=1))
         enc_style_cross_rec_x2 = svhn_decoder(torch.cat([enc_s2, enc_c1], dim=1))
-        enc_style_avg_joint_rec_x2 = svhn_decoder(torch.cat([enc_s2, avg_joint_c], dim=1))
-        enc_style_poe_joint_rec_x2 = svhn_decoder(torch.cat([enc_s2, poe_joint_c], dim=1))
+        if not opt.deterministic:
+            enc_style_avg_joint_rec_x2 = svhn_decoder(torch.cat([enc_s2, avg_joint_c], dim=1))
+            enc_style_poe_joint_rec_x2 = svhn_decoder(torch.cat([enc_s2, poe_joint_c], dim=1))
         enc_style_joint_gen_x2 = svhn_decoder(torch.cat([enc_s2, fixed_c], dim=1))
 
         # fixed_style, x2
         fixed_style_rec_x2 = svhn_decoder(torch.cat([fixed_s2, enc_c2], dim=1))
         fixed_style_cross_rec_x2 = svhn_decoder(torch.cat([fixed_s2, enc_c1], dim=1))
-        fixed_style_avg_joint_rec_x2 = svhn_decoder(torch.cat([fixed_s2, avg_joint_c], dim=1))
-        fixed_style_poe_joint_rec_x2 = svhn_decoder(torch.cat([fixed_s2, poe_joint_c], dim=1))
+        if not opt.deterministic:
+            fixed_style_avg_joint_rec_x2 = svhn_decoder(torch.cat([fixed_s2, avg_joint_c], dim=1))
+            fixed_style_poe_joint_rec_x2 = svhn_decoder(torch.cat([fixed_s2, poe_joint_c], dim=1))
         fixed_joint_gen_x2 = svhn_decoder(torch.cat([fixed_s2, fixed_c], dim=1))
 
-        x1_samples += [
-            enc_style_rec_x1, enc_style_cross_rec_x1, enc_style_avg_joint_rec_x1,
-            enc_style_poe_joint_rec_x1,
+        if not opt.deterministic:
+            x1_samples += [
+                enc_style_rec_x1, enc_style_cross_rec_x1, enc_style_avg_joint_rec_x1,
+                enc_style_poe_joint_rec_x1,
 
-            fixed_style_rec_x1, fixed_style_cross_rec_x1, fixed_style_avg_joint_rec_x1,
-            fixed_style_poe_joint_rec_x1,
+                fixed_style_rec_x1, fixed_style_cross_rec_x1, fixed_style_avg_joint_rec_x1,
+                fixed_style_poe_joint_rec_x1,
 
-            enc_style_joint_gen_x1, fixed_style_joint_gen_x1
-        ]
+                enc_style_joint_gen_x1, fixed_style_joint_gen_x1
+            ]
+        else:
+            x1_samples += [
+                enc_style_rec_x1, enc_style_cross_rec_x1,
+                fixed_style_rec_x1, fixed_style_cross_rec_x1,
 
-        x2_samples += [
-            enc_style_rec_x2, enc_style_cross_rec_x2, enc_style_avg_joint_rec_x2,
-            enc_style_poe_joint_rec_x2,
+                enc_style_joint_gen_x1, fixed_style_joint_gen_x1
+            ]
 
-            fixed_style_rec_x2, fixed_style_cross_rec_x2, fixed_style_avg_joint_rec_x2,
-            fixed_style_poe_joint_rec_x2,
+        if not opt.deterministic:
+            x2_samples += [
+                enc_style_rec_x2, enc_style_cross_rec_x2, enc_style_avg_joint_rec_x2,
+                enc_style_poe_joint_rec_x2,
 
-            enc_style_joint_gen_x2, fixed_joint_gen_x2
-        ]
+                fixed_style_rec_x2, fixed_style_cross_rec_x2, fixed_style_avg_joint_rec_x2,
+                fixed_style_poe_joint_rec_x2,
+
+                enc_style_joint_gen_x2, fixed_joint_gen_x2
+            ]
+        else:
+            x2_samples += [
+                enc_style_rec_x2, enc_style_cross_rec_x2,
+
+                fixed_style_rec_x2, fixed_style_cross_rec_x2,
+
+                enc_style_joint_gen_x2, fixed_joint_gen_x2
+            ]
     else:
         enc_c1 = z1_sample
         enc_c2 = z2_sample
@@ -373,6 +395,12 @@ def main():
         factor = 2
     content_dim = opt.latent_dim - opt.style_dim
 
+    # x1_feature = models.mnist.XDiscriminationFeature(img_shape=mnist_img_shape)
+    # x2_feature = models.svhn.XDiscriminationFeature(channels=svhn_channels)
+    # x1_discriminator = models.mnist.XFeatureZDiscriminator(x1_feature, opt.latent_dim)
+    # x2_discriminator = models.svhn.XFeatureZDiscriminator(x2_feature, opt.latent_dim)
+    # joint_discriminator = models.mnist_svhn.XXFeatureDiscriminator(x1_feature, x2_feature)
+
     x1_discriminators = nn.ModuleList([
         models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim),
         models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim),
@@ -382,7 +410,6 @@ def main():
         models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim),
     ])
     joint_discriminator = models.mnist_svhn.XXDiscriminator(img_shape=mnist_img_shape, channels=svhn_channels)
-    # joint_discriminator = models.mnist_svhn.XXDiscriminatorConv()
 
     model = models.mmali.FactorModelDoubleSemi(
         encoders={
@@ -598,7 +625,7 @@ def main():
 
             model.train()
 
-        if (not opt.no_eval) and (n_iter % opt.eval_interval == 0):
+        if not opt.no_eval and n_iter > 0 and n_iter % opt.eval_interval == 0:
             try:
                 eval_latent(n_iter)
                 eval_generation(n_iter)
