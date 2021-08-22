@@ -163,12 +163,13 @@ def calc_log_ratio_gaussian(x, mean1, cov1, mean2, cov2):
     return gaussian1.log_prob(x) - gaussian2.log_prob(x)
 
 
-def calc_kl_divergence(mu0, logvar0, mu1=None, logvar1=None):
+def calc_kl_divergence(mu0, logvar0, mu1=None, logvar1=None, dim=-1, keepdim=False):
     if mu1 is None or logvar1 is None:
-        KLD = -0.5 * torch.sum(1 - logvar0.exp() - mu0.pow(2) + logvar0)
+        KLD = -0.5 * torch.sum(1 - logvar0.exp() - mu0.pow(2) + logvar0, dim=dim, keepdim=keepdim)
     else:
         KLD = -0.5 * (
-            torch.sum(1 - logvar0.exp() / logvar1.exp() - (mu0 - mu1).pow(2) / logvar1.exp() + logvar0 - logvar1))
+            torch.sum(1 - logvar0.exp() / logvar1.exp() - (mu0 - mu1).pow(2) / logvar1.exp() + logvar0 - logvar1,
+                      dim=dim, keepdim=keepdim))
 
     return KLD
 
