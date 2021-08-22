@@ -94,19 +94,6 @@ def load_or_train_classifier():
     if os.path.exists(mnist_file):
         print('loading from {}'.format(mnist_file))
         mnist_classifier.load_state_dict(torch.load(mnist_file, map_location=device))
-        # dataset_test = torchvision.datasets.MNIST(opt.dataroot,
-        #                                           train=False,
-        #                                           download=True,
-        #                                           transform=torchvision.transforms.ToTensor())
-        # dataloader_test = torch.utils.data.DataLoader(dataset_test,
-        #                                               batch_size=opt.batch_size,
-        #                                               num_workers=opt.n_cpu,
-        #                                               shuffle=False,
-        #                                               pin_memory=True,
-        #                                               drop_last=False)
-        #
-        # correct, total = test(mnist_classifier, dataloader_test)
-        # print('loading model with test accuracy: {:6f}'.format(correct / total))
     else:
         print('training mnist classifier from scratch')
         dataset_train = torchvision.datasets.MNIST(opt.dataroot,
@@ -123,19 +110,6 @@ def load_or_train_classifier():
     if os.path.exists(svhn_file):
         print('loading from {}'.format(svhn_file))
         svhn_classifier.load_state_dict(torch.load(svhn_file, map_location=device))
-        #
-        # dataset_test = torchvision.datasets.SVHN(opt.dataroot,
-        #                                          split='test',
-        #                                          download=True,
-        #                                          transform=torchvision.transforms.ToTensor())
-        # dataloader_test = torch.utils.data.DataLoader(dataset_test,
-        #                                               batch_size=opt.batch_size,
-        #                                               num_workers=opt.n_cpu,
-        #                                               shuffle=False,
-        #                                               pin_memory=True,
-        #                                               drop_last=False)
-        # correct, total = test(svhn_classifier, dataloader_test)
-        # print('loading model with test accuracy: {:6f}'.format(correct / total))
     else:
         print('training svhn classifier from scratch')
         dataset_train = torchvision.datasets.SVHN(opt.dataroot,
