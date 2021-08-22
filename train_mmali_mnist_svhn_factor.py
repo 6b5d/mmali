@@ -436,8 +436,8 @@ def main():
     # x2_discriminator = models.svhn.XFeatureZDiscriminator(x2_feature, opt.latent_dim, output_dim=4)
     # joint_discriminator = models.mnist_svhn.XXFeatureDiscriminator(x1_feature, x2_feature)
 
-    x1_discriminator = models.mnist.XZDiscriminator(latent_dim=opt.latent_dim, img_shape=mnist_img_shape, output_dim=4)
-    x2_discriminator = models.svhn.XZDiscriminator(latent_dim=opt.latent_dim, channels=svhn_channels, output_dim=4)
+    x1_discriminators = models.mnist.XZDiscriminator(latent_dim=opt.latent_dim, img_shape=mnist_img_shape, output_dim=4)
+    x2_discriminators = models.svhn.XZDiscriminator(latent_dim=opt.latent_dim, channels=svhn_channels, output_dim=4)
     joint_discriminator = models.mnist_svhn.XXDiscriminator(img_shape=mnist_img_shape, channels=svhn_channels)
     # joint_discriminator = models.mnist_svhn.XXDiscriminatorConv()
 
@@ -459,8 +459,8 @@ def main():
                 models.svhn.Decoder(channels=svhn_channels, latent_dim=opt.latent_dim),
         },
         xz_discriminators={
-            key_mnist: x1_discriminator,
-            key_svhn: x2_discriminator,
+            key_mnist: x1_discriminators,
+            key_svhn: x2_discriminators,
         },
         joint_discriminator=joint_discriminator,
         content_dim=content_dim,
@@ -669,11 +669,12 @@ def main():
     save_samples(model_ema, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter)
     save_checkpoint(n_iter, model, model_ema, optimizer_D, optimizer_G)
 
-    try:
-        eval_latent(n_iter)
-        eval_generation(n_iter)
-    except:
-        print('Something wrong during evaluation')
+    if not opt.no_eval:
+        try:
+            eval_latent(n_iter)
+            eval_generation(n_iter)
+        except:
+            print('Something wrong during evaluation')
 
 
 # default option

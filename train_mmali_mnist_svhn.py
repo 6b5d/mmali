@@ -641,11 +641,12 @@ def main():
     save_samples(model_ema, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter)
     save_checkpoint(n_iter, model, model_ema, optimizer_D, optimizer_G)
 
-    try:
-        eval_latent(n_iter)
-        eval_generation(n_iter)
-    except:
-        print('Something wrong during evaluation')
+    if not opt.no_eval:
+        try:
+            eval_latent(n_iter)
+            eval_generation(n_iter)
+        except:
+            print('Something wrong during evaluation')
 
 
 # default option
