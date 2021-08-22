@@ -22,7 +22,7 @@ parser.add_argument('--batch_size', type=int, default=64, help='size of the batc
 parser.add_argument('--lr', type=float, default=0.0002, help='initial learning rate of Adam.')
 parser.add_argument('--b1', type=float, default=0.5, help='beta1 (betas[0]) value of Adam')
 parser.add_argument('--b2', type=float, default=0.999, help='beta2 (betas[1]) value of Adam')
-parser.add_argument('--ema_start', type=int, default=50000)
+parser.add_argument('--ema_start', type=int, default=120000)
 parser.add_argument('--beta', type=float, default=0.9999)
 
 parser.add_argument('--lambda_x_rec', type=float, default=0.0)
@@ -40,6 +40,7 @@ parser.add_argument('--n_epochs', type=int, default=100, help='number of epochs 
 
 parser.add_argument('--data_multiplication', type=int, default=30)
 parser.add_argument('--max_d', type=int, default=10000)
+parser.add_argument('--use_all', action='store_true')
 
 parser.add_argument('--n_extra', type=int, default=0)
 parser.add_argument('--n_extra_x1', type=int, default=0)
