@@ -184,7 +184,6 @@ data_test = torch.from_numpy(np.array(create_data_from(list_of_words_test, vocab
 embeddings = create_emb(vocabulary, x1_dataset.model)
 weights = calc_weights(vocabulary)
 emb_dataset = apply_weights(embeddings, weights, data_test)
-
 _, _, V = torch.svd(emb_dataset - emb_dataset.mean(dim=0), some=True)
 v = V[:, 0].unsqueeze(-1)
 u = v.mm(v.t())
@@ -216,6 +215,14 @@ corr, (cap_proj, img_proj) = utils.cca([cap_emb, img_emb], k=40)
 groundtruth = calculate_corr(cap_emb, img_emb)
 print('Largest eigen value from CCA: {:.3f}'.format(corr[0]))
 print('gt corr:', groundtruth)
+
+cap_mean = cap_mean.to(device)
+img_mean = img_mean.to(device)
+cap_proj = cap_proj.to(device)
+img_proj = img_proj.to(device)
+embeddings = embeddings.to(device)
+weights = weights.to(device)
+u = u.to(device)
 
 
 def calc_cross_coherence(loader, cap_encoder, cap_decoder, img_encoder, img_decoder):

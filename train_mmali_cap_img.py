@@ -275,15 +275,16 @@ def eval_generation(n_iter):
     print('evaluating generation:', cmd)
 
     if opt.deterministic:
-        acc_c2i, acc_i2c, acc_joint = subprocess.run(cmd,
-                                                     capture_output=True, text=True, shell=True,
-                                                     cwd='{}/src'.format(output_dir),
-                                                     env=os.environ).stdout.strip().split('\n')[-3:]
+        gt, acc_c2i, acc_i2c, acc_joint = subprocess.run(cmd,
+                                                         capture_output=True, text=True, shell=True,
+                                                         cwd='{}/src'.format(output_dir),
+                                                         env=os.environ).stdout.strip().split('\n')[-4:]
 
         acc_c2i = float(acc_c2i)
         acc_i2c = float(acc_i2c)
         acc_joint = float(acc_joint)
         accuracies = {
+            'groundtruth': gt,
             'm2s': acc_c2i,
             's2m': acc_i2c,
             'joint': acc_joint,
@@ -303,10 +304,10 @@ def eval_generation(n_iter):
         acc_joint = float(acc_joint)
         accuracies = {
             'groundtruth': gt,
-            'syn_m': acc_syn_c,
-            'syn_s': acc_syn_i,
-            'm2s': acc_c2i,
-            's2m': acc_i2c,
+            'syn_c': acc_syn_c,
+            'syn_i': acc_syn_i,
+            'c2i': acc_c2i,
+            'i2c': acc_i2c,
             'joint': acc_joint,
         }
 
