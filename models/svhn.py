@@ -65,22 +65,18 @@ class XZDiscriminator(nn.Module):
             # 32x32 -> 16x16
             sn(nn.Conv2d(channels, num_features, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout2d(0.2),
 
             # 16x16 -> 8x8
             sn(nn.Conv2d(num_features, num_features * 2, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout2d(0.2),
 
             # 8x8 -> 4x4
             sn(nn.Conv2d(num_features * 2, num_features * 4, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout2d(0.2),
 
             # 4x4 -> 1x1
             sn(nn.Conv2d(num_features * 4, 256, 4, 1, 0)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout2d(0.2),
 
             nn.Flatten(start_dim=1),
         )
@@ -88,21 +84,17 @@ class XZDiscriminator(nn.Module):
         self.z_discrimination = nn.Sequential(
             sn(nn.Linear(latent_dim, 256)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout2d(0.2),
 
             sn(nn.Linear(256, 256)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout2d(0.2),
         )
 
         self.joint_discriminator = nn.Sequential(
             sn(nn.Linear(512, 1024)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout2d(0.2),
 
             sn(nn.Linear(1024, 1024)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout2d(0.2),
 
             sn(nn.Linear(1024, output_dim)),
         )
