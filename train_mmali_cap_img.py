@@ -170,7 +170,6 @@ def save_samples(model, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter,
     samples = ''
     filter_func = lambda w: w != '<pad>' and w != '<eos>'
     for tuples in zip(*decoded_x1_samples):
-        print(len(tuples))
         fixed, rec, cross = tuples[:3]
 
         samples += ('input: ' + ' '.join(filter(filter_func, fixed)))
@@ -183,21 +182,13 @@ def save_samples(model, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter,
         samples += '<br><br>'
 
         if not opt.deterministic:
-            joint_avg, joint_poe = tuples[3:-2]
+            joint_avg, joint_poe = tuples[3:5]
 
             samples += ('joint_avg: ' + ' '.join(filter(filter_func, joint_avg)))
             samples += '<br><br>'
 
             samples += ('joint_poe: ' + ' '.join(filter(filter_func, joint_poe)))
             samples += '<br><br>'
-
-        gen1, gen2 = tuples[-2:]
-
-        samples += ('gen1: ' + ' '.join(filter(filter_func, gen1)))
-        samples += '<br><br>'
-
-        samples += ('gen2: ' + ' '.join(filter(filter_func, gen2)))
-        samples += '<br><br>'
 
     writer.add_text('samples', samples, global_step=n_iter)
 
