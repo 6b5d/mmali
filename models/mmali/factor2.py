@@ -410,8 +410,8 @@ class FactorModelDoubleSemi(nn.Module):
 
             sum_kld = torch.sum(torch.stack(sum_kld, dim=0), dim=0)
 
-            kld = self.weights[-1] * utils.calc_kl_divergence(param_mean_content, param_logvar_content, dim=-1,
-                                                              keepdim=True)
+            kld = self.weights[-1] * utils.calc_kl_divergence(param_mean_content, param_logvar_content,
+                                                              dim=-1, keepdim=True)
 
             sum_qp = self.weights[-1] * torch.sum(torch.stack([s[0] - s[1]  # q(x, s) p(c) : p(x, s, c)
                                                                for s in scores.values()], dim=0), dim=0)
