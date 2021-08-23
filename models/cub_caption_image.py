@@ -280,7 +280,7 @@ import torch.nn as nn
 
 
 class XXDiscriminatorFT(nn.Module):
-    def __init__(self, emb_size, channels=2048, num_features=32, output_dim=1, spectral_norm=True):
+    def __init__(self, emb_size=128, channels=2048, num_features=32, output_dim=1, spectral_norm=True):
         super().__init__()
 
         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
@@ -338,12 +338,12 @@ class XXDiscriminatorFT(nn.Module):
 
         self.joint_discriminator = nn.Sequential(
             sn(nn.Linear(dim_hidden + num_features * 16, 1024)),
-            # nn.BatchNorm1d(1024),
             nn.LeakyReLU(0.2, inplace=True),
+            nn.Dropout(0.2),
 
-            # sn(nn.Linear(1024, 1024)),
-            # nn.BatchNorm1d(1024),
-            # nn.LeakyReLU(0.2, inplace=True),
+            sn(nn.Linear(1024, 1024)),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Dropout(0.2),
 
             sn(nn.Linear(1024, output_dim)),
         )
