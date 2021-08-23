@@ -372,118 +372,67 @@ class FactorModelDoubleSemi(nn.Module):
             val2 = -val2
             return val2
 
-    def calc_score_kl2(self, curr_inputs, curr_key=None, cross=False, with_cross=False):
+    def calc_score_kl2(self, curr_inputs, curr_key=None):
         scores = {}
         for modality_key in self.sorted_keys:
-            discriminator = getattr(self.xz_discriminators, modality_key)[0]
-            curr_x = curr_inputs[modality_key]['x']
-            curr_z = curr_inputs[modality_key]['z']
+            discriminator = getattr(self.xz_discriminators, modality_key)
 
-            score1 = discriminator(curr_x, curr_z)
+            scores[modality_key] = [
+                # q(x, s, c) : p(x, s, c)
+                discriminator[0](curr_inputs[modality_key]['x'], curr_inputs[modality_key]['z']),
 
-            curr_c = curr_z[:, -self.content_dim:]
-            param = curr_inputs[modality_key]['z_dist_param']
-            mean, logvar = param[:, :param.size(1) // 2], param[:, param.size(1) // 2:]
-            c_mean, c_logvar = mean[:, -self.content_dim:], logvar[:, -self.content_dim:]
-            score2 = utils.calc_log_ratio_diag_gaussian(curr_c,
-                                                        c_mean, c_logvar,
-                                                        torch.zeros_like(c_mean), torch.zeros_like(c_logvar))
-
-            score2 = score2[:, None]
-            scores[modality_key] = [score1, score2]
+                # q(x, s, c) : q(x, s) p(c)
+                discriminator[1](curr_inputs[modality_key]['x'], curr_inputs[modality_key]['z'])
+            ]
 
         if curr_key is not None:
-            # i is current key
-            # q_i : q_j for j in keys
-            val1 = torch.sum(torch.stack([scores[curr_key][1] - s[1] for s in scores.values()], dim=0), dim=0)
+            param = curr_inputs[curr_key]['z_dist_param']
+            param_mean = param[:, :param.size(1) // 2]
+            param_logvar = param[:, param.size(1) // 2:]
+            param_mean_content = param_mean[:, -self.content_dim:]
+            param_logvar_content = param_logvar[:, -self.content_dim:]
 
-            # q_i : p
-            # val2 = scores[curr_key][1] + torch.sum(torch.stack([s[0] - s[1]  # q(x, s) p(c) : p(x, s, c)
-            #                                                     for s in scores.values()], dim=0), dim=0)
+            sum_kld = []
+            for label_value, other_key in enumerate(self.sorted_keys):
+                if other_key == curr_key:
+                    continue
+                param2 = curr_inputs[other_key]['z_dist_param']
+                param_mean2 = param2[:, :param.size(1) // 2]
+                param_logvar2 = param2[:, param.size(1) // 2:]
+                param_mean_content2 = param_mean2[:, -self.content_dim:]
+                param_logvar_content2 = param_logvar2[:, -self.content_dim:]
 
-            # res = val1 + val2
-            res = val1
-            return res
+                kld = self.weights[label_value] * utils.calc_kl_divergence(param_mean_content, param_logvar_content,
+                                                                           param_mean_content2.detach(),
+                                                                           param_logvar_content2.detach(),
+                                                                           dim=-1, keepdim=True)
+                sum_kld.append(kld)
+
+            sum_kld = torch.sum(torch.stack(sum_kld, dim=0), dim=0)
+
+            kld = self.weights[-1] * utils.calc_kl_divergence(param_mean_content, param_logvar_content, dim=-1,
+                                                              keepdim=True)
+
+            sum_qp = self.weights[-1] * torch.sum(torch.stack([s[0] - s[1]  # q(x, s) p(c) : p(x, s, c)
+                                                               for s in scores.values()], dim=0), dim=0)
+
+            return sum_kld + kld + sum_qp
         else:
-            # decoder distribution
-            val0 = self.joint_discriminator(*[curr_inputs[k]['x'] for k in self.sorted_keys])
+            joint = self.joint_discriminator(*[curr_inputs[k]['x'] for k in self.sorted_keys])
 
-            val1 = torch.sum(torch.stack([s[0] - s[1]  # q(x, s) p(c) : p(x, s, c)
-                                          for s in scores.values()], dim=0), dim=0)
+            sum_qp = torch.sum(torch.stack([s[0] - s[1]  # q(x, s) p(c) : p(x, s, c)
+                                            for s in scores.values()], dim=0), dim=0)
 
-            val2 = self.n_modalities * (val0 + val1) + torch.sum(torch.stack([s[1]
-                                                                              for s in scores.values()], dim=0), dim=0)
-            val2 = -val2
-            return val2
+            sum_qq = torch.sum(torch.stack([self.weights[i] * scores[k][1]
+                                            for i, k in enumerate(self.sorted_keys)], dim=0), dim=0)
 
-        # if curr_key is not None:
-        #     # i is current key
-        #     c = curr_inputs[curr_key]['z'][:, -self.content_dim:]
-        #
-        #     param1 = curr_inputs[curr_key]['z_dist_param']
-        #     mean1, logvar1 = param1[:, :param1.size(1) // 2], param1[:, param1.size(1) // 2:]
-        #     c_mean1, c_logvar1 = mean1[:, -self.content_dim:], logvar1[:, -self.content_dim:]
-        #
-        #     log_ratios1 = []
-        #     log_ratios2 = []
-        #     for modality_key in self.sorted_keys:
-        #         if modality_key == curr_key:
-        #             continue
-        #
-        #         param2 = curr_inputs[modality_key]['z_dist_param']
-        #         mean2, logvar2 = param2[:, :param2.size(1) // 2], param2[:, param2.size(1) // 2:]
-        #         c_mean2, c_logvar2 = mean2[:, -self.content_dim:], logvar2[:, -self.content_dim:]
-        #
-        #         log_ratios1.append(utils.calc_log_ratio_diag_gaussian(c,
-        #                                                               c_mean1, c_logvar1, c_mean2, c_logvar2))
-        #
-        #         log_ratios2.append(scores[modality_key]  # q:p
-        #                            - utils.calc_log_ratio_diag_gaussian(c,
-        #                                                                 c_mean2,
-        #                                                                 c_logvar2,
-        #                                                                 torch.zeros_like(c_mean2),
-        #                                                                 torch.zeros_like(c_logvar2)))  # q:q'
-        #
-        #     # print('enc:', log_ratios1[0].shape, log_ratios2[0].shape, scores[curr_key].shape)
-        #
-        #     val1 = torch.sum(torch.stack(log_ratios1, dim=0), dim=0)
-        #
-        #     val2 = torch.sum(torch.stack(log_ratios2, dim=0), dim=0)
-        #
-        #     return val1 + val2 + scores[curr_key]
-        #
-        # else:
-        #     # decoder distribution
-        #     val0 = self.n_modalities * self.joint_discriminator(*[curr_inputs[k]['x'] for k in self.sorted_keys])[:, 0]
-        #
-        #     c = list(curr_inputs.values())[0]['z'][:, -self.content_dim:]
-        #
-        #     log_ratios1 = []
-        #     log_ratios2 = []
-        #     for modality_key in self.sorted_keys:
-        #         param2 = curr_inputs[modality_key]['z_dist_param']
-        #         mean2, logvar2 = param2[:, :param2.size(1) // 2], param2[:, param2.size(1) // 2:]
-        #         c_mean2, c_logvar2 = mean2[:, -self.content_dim:], logvar2[:, -self.content_dim:]
-        #
-        #         log_ratio = utils.calc_log_ratio_diag_gaussian(c,
-        #                                                        c_mean2,
-        #                                                        c_logvar2,
-        #                                                        torch.zeros_like(c_mean2),
-        #                                                        torch.zeros_like(c_logvar2))
-        #
-        #         log_ratios1.append(log_ratio)
-        #         log_ratios2.append(scores[modality_key] - log_ratio)
-        #
-        #     val1 = torch.sum(torch.stack(log_ratios1, dim=0), dim=0)
-        #
-        #     val2 = self.n_modalities * torch.sum(torch.stack(log_ratios2, dim=0), dim=0)
-        #
-        #     print(val0.shape, val1.shape, val2.shape)
-        #     return -(val0 + val1 + val2)
+            return -(joint + sum_qp + sum_qq)
 
     def forward_kl(self, real_inputs, train_d=True, joint=False, progress=None):
         self.generators.requires_grad_(not train_d)
         self.discriminators.requires_grad_(train_d)
+
+        self.weights = [0.1, 0.1, 0.8]
 
         losses = {}
         if train_d:
@@ -496,7 +445,6 @@ class FactorModelDoubleSemi(nn.Module):
 
                 losses['joint'] = torch.mean(F.softplus(-dis_real)) + torch.mean(F.softplus(dis_fake))
             else:
-
                 gen_inputs = {}
                 with torch.set_grad_enabled(False):
                     for modality_key in self.sorted_keys:
@@ -519,11 +467,11 @@ class FactorModelDoubleSemi(nn.Module):
                     dec_x = gen_inputs[modality_key]['x']
                     real_z = real_inputs[modality_key]['z']
 
-                    if self.lambda_mod[modality_key] * self.lambda_gp > 0.0:
-                        real_x.requires_grad_(True)
-                        dec_x.requires_grad_(True)
-                        real_z.requires_grad_(True)
-                        enc_z.requires_grad_(True)
+                    # if self.lambda_mod[modality_key] * self.lambda_gp > 0.0:
+                    #     real_x.requires_grad_(True)
+                    #     dec_x.requires_grad_(True)
+                    #     real_z.requires_grad_(True)
+                    #     enc_z.requires_grad_(True)
 
                     # q(x, s, c) : p(x, s, c)
                     dis_real = discriminator[0](real_x, enc_z)
@@ -531,11 +479,11 @@ class FactorModelDoubleSemi(nn.Module):
                     losses['{}_0'.format(modality_key)] = torch.mean(F.softplus(-dis_real)) + \
                                                           torch.mean(F.softplus(dis_fake))
 
-                    if self.lambda_mod[modality_key] * self.lambda_gp > 0.0:
-                        losses['{}_0_gp'.format(modality_key)] = utils.calc_gradient_penalty_jsd(
-                            dis_real, [real_x, enc_z], dis_fake, [dec_x, real_z],
-                            self.lambda_mod[modality_key] * self.lambda_gp
-                        )
+                    # if self.lambda_mod[modality_key] * self.lambda_gp > 0.0:
+                    #     losses['{}_0_gp'.format(modality_key)] = utils.calc_gradient_penalty_jsd(
+                    #         dis_real, [real_x, enc_z], dis_fake, [dec_x, real_z],
+                    #         self.lambda_mod[modality_key] * self.lambda_gp
+                    #     )
 
                     # # shuffle x and z together
                     real_x_shuffled, enc_z_shuffled = utils.permute_dim([real_x, enc_z], dim=0)
@@ -553,20 +501,17 @@ class FactorModelDoubleSemi(nn.Module):
             gen_inputs = {}
             with torch.set_grad_enabled(True):
                 for modality_key in self.sorted_keys:
-                    # encoder = getattr(self.encoders, modality_key).module
-                    encoder = getattr(self.encoders, modality_key)
+                    encoder = getattr(self.encoders, modality_key).module
                     decoder = getattr(self.decoders, modality_key)
 
                     real_x = real_inputs[modality_key]['x']
                     real_z = real_inputs[modality_key]['z']
 
-                    # enc_z_dist_param = encoder(real_x)
-                    # enc_z = utils.reparameterize(enc_z_dist_param)
-                    enc_z = encoder(real_x)
+                    enc_z_dist_param = encoder(real_x)
+                    enc_z = utils.reparameterize(enc_z_dist_param)
                     dec_x = decoder(real_z)
 
-                    # gen_inputs[modality_key] = {'x': dec_x, 'z': enc_z, 'z_dist_param': enc_z_dist_param}
-                    gen_inputs[modality_key] = {'x': dec_x, 'z': enc_z}
+                    gen_inputs[modality_key] = {'x': dec_x, 'z': enc_z, 'z_dist_param': enc_z_dist_param}
 
             if joint:
                 # encoder distributions
@@ -579,10 +524,10 @@ class FactorModelDoubleSemi(nn.Module):
 
                         curr_inputs[modality_key2]['x'] = real_inputs[modality_key2]['x']
                         curr_inputs[modality_key2]['z'] = torch.cat([style, content], dim=1)
-                        # curr_inputs[modality_key2]['z_dist_param'] = gen_inputs[modality_key2]['z_dist_param'].detach()
+                        curr_inputs[modality_key2]['z_dist_param'] = gen_inputs[modality_key2]['z_dist_param']
 
-                    losses['joint_q{}'.format(label_value)] = torch.mean(self.calc_score_kl(curr_inputs,
-                                                                                            curr_key=modality_key))
+                    losses['joint_q{}'.format(label_value)] = self.weights[label_value] * torch.mean(
+                        self.calc_score_kl2(curr_inputs, curr_key=modality_key))
 
                 # decoder distribution
                 curr_inputs = {k: {} for k in self.sorted_keys}
@@ -596,7 +541,7 @@ class FactorModelDoubleSemi(nn.Module):
                     # encoder.requires_grad_(True)
                     # curr_inputs[modality_key]['z_dist_param'] = enc_z_dist_param
 
-                losses['joint_p'] = torch.mean(self.calc_score_kl(curr_inputs))
+                losses['joint_p'] = self.weights[-1] * torch.mean(self.calc_score_kl2(curr_inputs))
             else:
                 for modality_key in self.sorted_keys:
                     discriminator = getattr(self.xz_discriminators, modality_key)[0]

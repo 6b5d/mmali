@@ -120,15 +120,6 @@ def save_samples(model, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter)
 
                 enc_style_joint_gen_x1, fixed_style_joint_gen_x1
             ]
-        else:
-            x1_samples += [
-                enc_style_rec_x1, enc_style_cross_rec_x1,
-                fixed_style_rec_x1, fixed_style_cross_rec_x1,
-
-                enc_style_joint_gen_x1, fixed_style_joint_gen_x1
-            ]
-
-        if not opt.deterministic:
             x2_samples += [
                 enc_style_rec_x2, enc_style_cross_rec_x2, enc_style_avg_joint_rec_x2,
                 enc_style_poe_joint_rec_x2,
@@ -139,6 +130,12 @@ def save_samples(model, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter)
                 enc_style_joint_gen_x2, fixed_joint_gen_x2
             ]
         else:
+            x1_samples += [
+                enc_style_rec_x1, enc_style_cross_rec_x1,
+                fixed_style_rec_x1, fixed_style_cross_rec_x1,
+
+                enc_style_joint_gen_x1, fixed_style_joint_gen_x1
+            ]
             x2_samples += [
                 enc_style_rec_x2, enc_style_cross_rec_x2,
 
