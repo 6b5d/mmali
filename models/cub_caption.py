@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class Encoder(nn.Module):
-    def __init__(self, emb_size, latent_dim, num_features=32):
+    def __init__(self, latent_dim, emb_size=128, num_features=32):
         super().__init__()
 
         use_bias = False
@@ -46,7 +46,7 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, emb_size, latent_dim, num_features=32):
+    def __init__(self, latent_dim, emb_size=128, num_features=32):
         super().__init__()
 
         use_bias = False
@@ -90,7 +90,7 @@ class Decoder(nn.Module):
 
 
 class XZDiscriminator(nn.Module):
-    def __init__(self, emb_size, latent_dim, num_features=32, output_dim=1, spectral_norm=True):
+    def __init__(self, latent_dim, emb_size=128, num_features=32, output_dim=1, spectral_norm=True):
         super().__init__()
 
         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
@@ -130,16 +130,16 @@ class XZDiscriminator(nn.Module):
             sn(nn.Linear(latent_dim, 512)),
             nn.LeakyReLU(0.2, inplace=True),
 
-            # sn(nn.Linear(512, 512)),
-            # nn.LeakyReLU(0.2, inplace=True),
+            sn(nn.Linear(512, 512)),
+            nn.LeakyReLU(0.2, inplace=True),
         )
 
         self.discriminator = nn.Sequential(
             sn(nn.Linear(1024, 1024)),
             nn.LeakyReLU(0.2, inplace=True),
 
-            # sn(nn.Linear(1024, 1024)),
-            # nn.LeakyReLU(0.2, inplace=True),
+            sn(nn.Linear(1024, 1024)),
+            nn.LeakyReLU(0.2, inplace=True),
 
             sn(nn.Linear(1024, output_dim)),
         )
