@@ -330,20 +330,18 @@ class XXDiscriminatorFT(nn.Module):
                 nn.LeakyReLU(0.2, inplace=True),
             ]
 
-        # layers += [
-        #     sn(nn.Linear(dim_hidden, dim_hidden)),
-        #     nn.LeakyReLU(0.2, inplace=True),
-        # ]
+        layers += [
+            sn(nn.Linear(dim_hidden, dim_hidden)),
+            nn.LeakyReLU(0.2, inplace=True),
+        ]
         self.x2_discrimination = nn.Sequential(*layers)
 
         self.joint_discriminator = nn.Sequential(
             sn(nn.Linear(dim_hidden + num_features * 16, 1024)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.2),
 
             sn(nn.Linear(1024, 1024)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.2),
 
             sn(nn.Linear(1024, output_dim)),
         )
