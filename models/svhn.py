@@ -423,19 +423,23 @@ class XFeatureZDiscriminator(nn.Module):
         self.z_feature = nn.Sequential(
             sn(nn.Linear(latent_dim, hidden_dim)),
             nn.LeakyReLU(0.2, inplace=True),
+            nn.Dropout(0.2),
 
-            # sn(nn.Linear(256, hidden_dim)),
-            # nn.LeakyReLU(0.2, inplace=True),
+            sn(nn.Linear(256, hidden_dim)),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Dropout(0.2),
         )
 
         self.joint_discriminator = nn.Sequential(
-            sn(nn.Linear(2 * hidden_dim, 512)),
+            sn(nn.Linear(2 * hidden_dim, 1024)),
             nn.LeakyReLU(0.2, inplace=True),
+            nn.Dropout(0.2),
 
-            # sn(nn.Linear(1024, 1024)),
-            # nn.LeakyReLU(0.2, inplace=True),
+            sn(nn.Linear(1024, 1024)),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Dropout(0.2),
 
-            sn(nn.Linear(512, output_dim)),
+            sn(nn.Linear(1024, output_dim)),
         )
 
     def forward(self, x, z):
