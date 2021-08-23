@@ -264,6 +264,11 @@ class CUBImageFeature(data.Dataset):
     def __len__(self):
         return len(self.data)
 
+    def decode(self, x):
+        if self.normalization:
+            x = self.normalizer[1] * x + self.normalizer[0]
+        return x
+
     def __getitem__(self, index):
         if self.transform is not None:
             return self.transform(self.data[index]), index
