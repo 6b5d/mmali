@@ -125,48 +125,32 @@ def load_or_train_classifier():
     return mnist_classifier, svhn_classifier
 
 
-@torch.no_grad()
 def calc_cross_coherence(paired_loader,
                          mnist_encoder, mnist_decoder, mnist_classifier,
                          svhn_encoder, svhn_decoder, svhn_classifier):
-    # mnist -> svhn
-    total_m2s = 0
+    total = 0
     correct_m2s = 0
-    for x, _, y in paired_loader:
-        x = x.to(device)
+    correct_s2m = 0
+    for x1, x2, y in paired_loader:
+        x1 = x1.to(device)
+        x2 = x2.to(device)
         y = y.to(device)
-        s = torch.randn(y.size(0), opt.style_dim).to(device)
 
-        enc_z = mnist_encoder(x)
-        dec_x = svhn_decoder(torch.cat([s, enc_z[:, opt.style_dim:]], dim=1))
-        pred_y = svhn_classifier(dec_x)
-
+        dec_x2 = svhn_decoder(mnist_encoder(x1))
+        pred_y = svhn_classifier(dec_x2)
         _, predicted = torch.max(pred_y, dim=1)
-
-        total_m2s += y.size(0)
         correct_m2s += predicted.eq(y).sum().item()
 
-    # svhn -> mnist
-    total_s2m = 0
-    correct_s2m = 0
-    for _, x, y in paired_loader:
-        x = x.to(device)
-        y = y.to(device)
-        s = torch.randn(y.size(0), opt.style_dim).to(device)
-
-        enc_z = svhn_encoder(x)
-        dec_x = mnist_decoder(torch.cat([s, enc_z[:, opt.style_dim:]], dim=1))
-        pred_y = mnist_classifier(dec_x)
-
+        dec_x1 = mnist_decoder(svhn_encoder(x2))
+        pred_y = mnist_classifier(dec_x1)
         _, predicted = torch.max(pred_y, dim=1)
-
-        total_s2m += y.size(0)
         correct_s2m += predicted.eq(y).sum().item()
 
-    return correct_m2s / total_m2s, correct_s2m / total_s2m
+        total += y.size(0)
+
+    return correct_m2s / total, correct_s2m / total
 
 
-@torch.no_grad()
 def calc_joint_coherence(mnist_decoder, mnist_classifier, svhn_decoder, svhn_classifier, total=10000):
     z = torch.randn(total, opt.latent_dim).to(device)
 
@@ -184,16 +168,8 @@ def calc_joint_coherence(mnist_decoder, mnist_classifier, svhn_decoder, svhn_cla
     return correct / total
 
 
-@torch.no_grad()
 def calc_synergy_coherence(paired_loader, mnist_encoder, mnist_decoder, mnist_classifier,
                            svhn_encoder, svhn_decoder, svhn_classifier):
-    mnist_encoder.eval()
-    mnist_decoder.eval()
-    mnist_classifier.eval()
-    svhn_encoder.eval()
-    svhn_decoder.eval()
-    svhn_classifier.eval()
-
     total = 0
     correct_m = 0
     correct_s = 0
@@ -279,19 +255,20 @@ def main():
     svhn_decoder.eval()
     svhn_classifier.eval()
 
-    if not opt.deterministic:
-        acc_syn_m, acc_syn_s = calc_synergy_coherence(paired_loader, mnist_encoder, mnist_decoder, mnist_classifier,
-                                                      svhn_encoder, svhn_decoder, svhn_classifier)
-        print('{:.6f}'.format(acc_syn_m))
-        print('{:.6f}'.format(acc_syn_s))
+    with torch.no_grad():
+        if not opt.deterministic:
+            acc_syn_m, acc_syn_s = calc_synergy_coherence(paired_loader, mnist_encoder, mnist_decoder, mnist_classifier,
+                                                          svhn_encoder, svhn_decoder, svhn_classifier)
+            print('{:.6f}'.format(acc_syn_m))
+            print('{:.6f}'.format(acc_syn_s))
 
-    acc_m2s, acc_s2m = calc_cross_coherence(paired_loader, mnist_encoder, mnist_decoder, mnist_classifier,
-                                            svhn_encoder, svhn_decoder, svhn_classifier)
-    print('{:.6f}'.format(acc_m2s))
-    print('{:.6f}'.format(acc_s2m))
+        acc_m2s, acc_s2m = calc_cross_coherence(paired_loader, mnist_encoder, mnist_decoder, mnist_classifier,
+                                                svhn_encoder, svhn_decoder, svhn_classifier)
+        print('{:.6f}'.format(acc_m2s))
+        print('{:.6f}'.format(acc_s2m))
 
-    acc_joint = calc_joint_coherence(mnist_decoder, mnist_classifier, svhn_decoder, svhn_classifier)
-    print('{:.6f}'.format(acc_joint))
+        acc_joint = calc_joint_coherence(mnist_decoder, mnist_classifier, svhn_decoder, svhn_classifier)
+        print('{:.6f}'.format(acc_joint))
 
 
 if __name__ == '__main__':
