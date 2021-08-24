@@ -79,6 +79,7 @@ class Decoder(nn.Module):
             # size: (num_features) x 32 x 128
 
             nn.ConvTranspose2d(num_features, 1, 4, 2, 1, bias=True),
+            nn.ReLU(True),
 
             nn.Linear(128, emb_size),
             nn.Sigmoid(),
