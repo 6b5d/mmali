@@ -19,10 +19,10 @@ parser.add_argument('--max_iter', type=int, default=250000, help='maximum iterat
 parser.add_argument('--dis_iter', type=int, default=1)
 parser.add_argument('--gen_iter', type=int, default=1)
 parser.add_argument('--batch_size', type=int, default=64, help='size of the batches')
-parser.add_argument('--lr', type=float, default=0.0002, help='initial learning rate of Adam.')
+parser.add_argument('--lr', type=float, default=0.0001, help='initial learning rate of Adam.')
 parser.add_argument('--b1', type=float, default=0.5, help='beta1 (betas[0]) value of Adam')
 parser.add_argument('--b2', type=float, default=0.999, help='beta2 (betas[1]) value of Adam')
-parser.add_argument('--ema_start', type=int, default=120000)
+parser.add_argument('--ema_start', type=int, default=50000)
 parser.add_argument('--beta', type=float, default=0.9999)
 
 parser.add_argument('--lambda_x_rec', type=float, default=0.0)
