@@ -58,26 +58,26 @@ class XZDiscriminatorFT(nn.Module):
                 nn.LeakyReLU(0.2, inplace=True),
             ]
 
-        # layers += [
-        #     nn.Linear(dim_hidden, dim_hidden),
-        #     nn.LeakyReLU(0.2, inplace=True),
-        # ]
+        layers += [
+            sn(nn.Linear(dim_hidden, dim_hidden)),
+            nn.LeakyReLU(0.2, inplace=True),
+        ]
         self.x_discrimination = nn.Sequential(*layers)
 
         self.z_discrimination = nn.Sequential(
             sn(nn.Linear(latent_dim, dim_hidden)),
             nn.LeakyReLU(0.2, inplace=True),
 
-            # sn(nn.Linear(dim_hidden, dim_hidden)),
-            # nn.LeakyReLU(0.2, inplace=True),
+            sn(nn.Linear(dim_hidden, dim_hidden)),
+            nn.LeakyReLU(0.2, inplace=True),
         )
 
         self.discriminator = nn.Sequential(
             sn(nn.Linear(2 * dim_hidden, 512)),
             nn.LeakyReLU(0.2, inplace=True),
 
-            # sn(nn.Linear(1024, 1024)),
-            # nn.LeakyReLU(0.2, inplace=True),
+            sn(nn.Linear(512, 512)),
+            nn.LeakyReLU(0.2, inplace=True),
 
             sn(nn.Linear(512, output_dim)),
         )
