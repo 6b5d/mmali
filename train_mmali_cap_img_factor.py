@@ -340,7 +340,7 @@ def main():
     x2_discriminators = models.cub_image.XZDiscriminatorFT(latent_dim=opt.latent_dim, output_dim=4)
     joint_discriminator = models.cub_caption_image.XXDiscriminatorFT(emb_size=opt.emb_size)
 
-    model = models.mmali.FactorModelDoubleSemi(
+    model = models.mmali.FactorModel(
         encoders={
             key_cap:
                 conditional(
