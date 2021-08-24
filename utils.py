@@ -10,6 +10,16 @@ from scipy.linalg import eig
 from skimage.filters import threshold_yen as threshold
 
 
+class OrderedCounter(Counter, OrderedDict):
+    """Counter that remembers the order elements are first encountered."""
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, OrderedDict(self))
+
+    def __reduce__(self):
+        return self.__class__, (OrderedDict(self),)
+
+
 def permute_dim(input, dim=0):
     if torch.is_tensor(input):
         index = torch.randperm(input.size(dim)).to(input.device)
@@ -170,7 +180,6 @@ def calc_kl_divergence(mu0, logvar0, mu1=None, logvar1=None, dim=-1, keepdim=Fal
         KLD = -0.5 * (
             torch.sum(1 - logvar0.exp() / logvar1.exp() - (mu0 - mu1).pow(2) / logvar1.exp() + logvar0 - logvar1,
                       dim=dim, keepdim=keepdim))
-
     return KLD
 
 
@@ -227,13 +236,3 @@ def cca(views, k=None, eps=1e-12):
     proj_matrices = torch.split(torch.from_numpy(eigenvectors.real).type_as(views[0]), os)
 
     return correlations, proj_matrices
-
-
-class OrderedCounter(Counter, OrderedDict):
-    """Counter that remembers the order elements are first encountered."""
-
-    def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, OrderedDict(self))
-
-    def __reduce__(self):
-        return self.__class__, (OrderedDict(self),)
