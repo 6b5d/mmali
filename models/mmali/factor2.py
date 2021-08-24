@@ -69,17 +69,17 @@ class FactorModelDoubleSemi(nn.Module):
             z = inputs[modality_key]['z']
 
             score1 = discriminator[0](x, z)  # q(x, s, c) : p(x, s, c)
-            score2 = discriminator[1](x, z)  # q(x, s, c) : q(x, s) p(c)
+            score2 = discriminator[1](x, z)  # q(x, s) p(c) : p(x, s, c)
 
             scores[modality_key] = [score1, score2]
 
-        score_sum = score_joint + torch.sum(torch.stack([s[0] - s[1]  # q(x, s) p(c) : p(x, s, c)
+        score_sum = score_joint + torch.sum(torch.stack([s[1]  # q(x, s) p(c) : p(x, s, c)
                                                          for s in scores.values()], dim=0), dim=0)
 
         joint_score = []
         for modality_key in self.sorted_keys:
             # q(x, s, c) : q(x, s) p(c)
-            score = scores[modality_key][1]
+            score = scores[modality_key][0] - scores[modality_key][1]
             joint_score.append(score)
 
         joint_score.append(-score_sum)
@@ -149,9 +149,10 @@ class FactorModelDoubleSemi(nn.Module):
                     real_c_shuffled = real_z_shuffled[:, -self.content_dim:]
                     cs_shuffled = torch.cat([enc_s_shuffled, real_c_shuffled], dim=1)
 
-                    # q(x, s, c) : q(x, s) p(c)
-                    dis_real = discriminator[1](real_x, enc_z)
-                    dis_fake = discriminator[1](real_x_shuffled, cs_shuffled)
+                    # q(x, s) p(c) : p(x, s, c)
+                    dis_real = discriminator[1](real_x_shuffled, cs_shuffled)
+                    dis_fake = discriminator[1](dec_x, real_z)
+
                     losses['{}_1'.format(modality_key)] = torch.mean(F.softplus(-dis_real)) + \
                                                           torch.mean(F.softplus(dis_fake))
         else:
@@ -186,8 +187,7 @@ class FactorModelDoubleSemi(nn.Module):
                     dis_score = self.calc_joint_score(curr_inputs, score_q)
                     adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                                   for i in range(dis_score.size(1)) if i != label_value]
-                    # TODO: torch.sum or torch.mean?
-                    losses['joint_q{}'.format(label_value)] = torch.mean(torch.stack(adv_losses, dim=0), dim=0)
+                    losses['joint_q{}'.format(label_value)] = torch.sum(torch.stack(adv_losses, dim=0), dim=0)
 
                     label_value += 1
 
@@ -200,7 +200,7 @@ class FactorModelDoubleSemi(nn.Module):
                 dis_score = self.calc_joint_score(curr_inputs, score_p)
                 adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                               for i in range(dis_score.size(1)) if i != label_value]
-                losses['joint_p{}'.format(label_value)] = torch.mean(torch.stack(adv_losses, dim=0), dim=0)
+                losses['joint_p{}'.format(label_value)] = torch.sum(torch.stack(adv_losses, dim=0), dim=0)
 
                 label_value += 1
 
@@ -261,7 +261,7 @@ class FactorModelDoubleSemi(nn.Module):
                     adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                                   for i in range(dis_score.size(1)) if i != label_value]
 
-                    losses['joint_r{}'.format(label_value)] = torch.mean(torch.stack(adv_losses, dim=0), dim=0)
+                    losses['joint_r{}'.format(label_value)] = torch.sum(torch.stack(adv_losses, dim=0), dim=0)
 
                     label_value += 1
 
