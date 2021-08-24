@@ -312,8 +312,7 @@ class FactorModel(nn.Module):
                                   for i in range(dis_0.size(1)) if i != label_value]
 
                     losses['{}_c0'.format(modality_key)] = self.lambda_unimodal * 2. / (
-                                1 + self.n_modalities) * torch.mean(torch.stack(adv_losses,
-                                                                                dim=0), dim=0)
+                            1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
 
                     # p(x, s, c)
                     dis_1 = discriminator(dec_x, real_z)
@@ -322,8 +321,7 @@ class FactorModel(nn.Module):
                     adv_losses = [F.cross_entropy(dis_1, i * label_ones)
                                   for i in range(dis_1.size(1)) if i != label_value]
                     losses['{}_c1'.format(modality_key)] = self.lambda_unimodal * 2. / (
-                                1 + self.n_modalities) * torch.mean(torch.stack(adv_losses,
-                                                                                dim=0), dim=0)
+                            1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
 
                 if self.lambda_s_rec > 0.0:
                     for modality_key in self.sorted_keys:
