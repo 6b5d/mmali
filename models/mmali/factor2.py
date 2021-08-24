@@ -207,18 +207,16 @@ class FactorModelDoubleSemi(nn.Module):
                 if self.lambda_c_rec > 0.0:
                     z_rec_dist_params = []
 
-                    for k in self.sorted_keys:
-                        encoder = getattr(self.encoders, k).module
-                        z_rec_dist_param = encoder(gen_inputs[k]['x'])
+                    for modality_key in self.sorted_keys:
+                        encoder = getattr(self.encoders, modality_key).module
+                        z_rec_dist_param = encoder(gen_inputs[modality_key]['x'])
                         z_rec_dist_params.append(z_rec_dist_param)
 
-                    z_joint_dist_param = utils.joint_posterior(*z_rec_dist_params, average=True)
-                    z_joint_dist_param_mean = z_joint_dist_param[:, :z_joint_dist_param.size(1) // 2]
-                    c_joint_dist_param_mean = z_joint_dist_param_mean[:, -self.content_dim:]
+                    z_joint = utils.reparameterize(utils.joint_posterior(*z_rec_dist_params, average=True))
+                    c_joint_rec = z_joint[:, -self.content_dim:]
 
                     c_real = list(real_inputs.values())[0]['z'][:, -self.content_dim:]
-
-                    c_rec_loss = (c_joint_dist_param_mean - c_real).square().mean()
+                    c_rec_loss = (c_joint_rec - c_real).square().mean()
                     losses['joint_c_rec'] = self.lambda_c_rec * c_rec_loss
 
                 if self.lambda_x_rec > 0.0:
@@ -227,14 +225,15 @@ class FactorModelDoubleSemi(nn.Module):
 
                     c_joint = z_joint[:, -self.content_dim:]
 
-                    for k in self.sorted_keys:
-                        decoder = getattr(self.decoders, k)
+                    for modality_key in self.sorted_keys:
+                        decoder = getattr(self.decoders, modality_key)
 
-                        x_real = real_inputs[k]['x']
-                        x_rec = decoder(torch.cat([gen_inputs[k]['z'][:, :-self.content_dim], c_joint], dim=1))
+                        x_real = real_inputs[modality_key]['x']
+                        x_rec = decoder(torch.cat([gen_inputs[modality_key]['z'][:, :-self.content_dim], c_joint],
+                                                  dim=1))
 
                         x_rec_loss = (x_rec - x_real).square().mean()
-                        losses['{}_x_rec_joint'.format(k)] = self.lambda_x_rec * x_rec_loss
+                        losses['{}_x_rec_joint'.format(modality_key)] = self.lambda_x_rec * x_rec_loss
             else:
                 label_value = self.n_modalities + 1
                 for modality_key in self.sorted_keys:
@@ -280,16 +279,15 @@ class FactorModelDoubleSemi(nn.Module):
                     losses['{}_real_fake'.format(modality_key)] = self.lambda_unimodal * loss
 
                 if self.lambda_s_rec > 0.0:
-                    for k in self.sorted_keys:
-                        encoder = getattr(self.encoders, k).module
-                        z_rec_dist_param = encoder(gen_inputs[k]['x'])
-                        z_rec_dist_param_mean = z_rec_dist_param[:, :z_rec_dist_param.size(1) // 2]
-                        s_rec_dist_param_mean = z_rec_dist_param_mean[:, :-self.content_dim]
+                    for modality_key in self.sorted_keys:
+                        encoder = getattr(self.encoders, modality_key)
+                        z_rec = encoder(gen_inputs[modality_key]['x'])
 
-                        s_real = real_inputs[k]['z'][:, :-self.content_dim]
+                        s_real = real_inputs[modality_key]['z'][:, :-self.content_dim]
+                        s_rec = z_rec[:, :-self.content_dim]
 
-                        s_rec_loss = (s_rec_dist_param_mean - s_real).square().mean()
-                        losses['{}_s_rec'.format(k)] = self.lambda_s_rec * s_rec_loss
+                        s_rec_loss = (s_rec - s_real).square().mean()
+                        losses['{}_s_rec'.format(modality_key)] = self.lambda_s_rec * s_rec_loss
 
         return losses
 
