@@ -69,17 +69,17 @@ class FactorModelDoubleSemi(nn.Module):
             z = inputs[modality_key]['z']
 
             score1 = discriminator[0](x, z)  # q(x, s, c) : p(x, s, c)
-            score2 = discriminator[1](x, z)  # q(x, s) p(c) : p(x, s, c)
+            score2 = discriminator[1](x, z)  # q(x, s, c) : q(x, s) p(c)
 
             scores[modality_key] = [score1, score2]
 
-        score_sum = score_joint + torch.sum(torch.stack([s[1]  # q(x, s) p(c) : p(x, s, c)
+        score_sum = score_joint + torch.sum(torch.stack([s[0] - s[1]  # q(x, s) p(c) : p(x, s, c)
                                                          for s in scores.values()], dim=0), dim=0)
 
         joint_score = []
         for modality_key in self.sorted_keys:
             # q(x, s, c) : q(x, s) p(c)
-            score = scores[modality_key][0] - scores[modality_key][1]
+            score = scores[modality_key][1]
             joint_score.append(score)
 
         joint_score.append(-score_sum)
@@ -100,7 +100,6 @@ class FactorModelDoubleSemi(nn.Module):
 
         batch_size = list(real_inputs.values())[0]['x'].size(0)
         device = list(real_inputs.values())[0]['x'].device
-        # label_zeros = torch.zeros(batch_size, dtype=torch.long, device=device)
         label_ones = torch.ones(batch_size, dtype=torch.long, device=device)
 
         losses = {}
@@ -149,9 +148,9 @@ class FactorModelDoubleSemi(nn.Module):
                     real_c_shuffled = real_z_shuffled[:, -self.content_dim:]
                     cs_shuffled = torch.cat([enc_s_shuffled, real_c_shuffled], dim=1)
 
-                    # q(x, s) p(c) : p(x, s, c)
-                    dis_real = discriminator[1](real_x_shuffled, cs_shuffled)
-                    dis_fake = discriminator[1](dec_x, real_z)
+                    # q(x, s, c) : q(x, s) q(c)
+                    dis_real = discriminator[1](real_x, enc_z)
+                    dis_fake = discriminator[1](real_x_shuffled, cs_shuffled)
 
                     losses['{}_1'.format(modality_key)] = torch.mean(F.softplus(-dis_real)) + \
                                                           torch.mean(F.softplus(dis_fake))
