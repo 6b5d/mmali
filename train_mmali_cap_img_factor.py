@@ -278,7 +278,7 @@ def eval_generation(n_iter):
                                                          capture_output=True, text=True, shell=True,
                                                          cwd='{}/src'.format(output_dir),
                                                          env=os.environ).stdout.strip().split('\n')[-4:]
-
+        gt = float(gt)
         acc_c2i = float(acc_c2i)
         acc_i2c = float(acc_i2c)
         acc_joint = float(acc_joint)
@@ -295,7 +295,7 @@ def eval_generation(n_iter):
                                                                                cwd='{}/src'.format(output_dir),
                                                                                env=os.environ).stdout.strip().split(
             '\n')[-6:]
-
+        gt = float(gt)
         acc_syn_c = float(acc_syn_c)
         acc_syn_i = float(acc_syn_i)
         acc_c2i = float(acc_c2i)
