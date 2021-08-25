@@ -657,8 +657,8 @@ def main():
             try:
                 eval_latent(n_iter)
                 eval_generation(n_iter)
-            except:
-                print('Something wrong during evaluation')
+            except Exception as e:
+                print('Something wrong during evaluation: ', e)
 
     if not opt.deterministic:
         paired_x1, paired_x2 = next(paired_dataloader)
@@ -673,8 +673,8 @@ def main():
         try:
             eval_latent(n_iter)
             eval_generation(n_iter)
-        except:
-            print('Something wrong during evaluation')
+        except Exception as e:
+            print('Something wrong during evaluation: ', e)
 
 
 # default option

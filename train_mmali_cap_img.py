@@ -279,7 +279,7 @@ def eval_generation(n_iter):
                                                          capture_output=True, text=True, shell=True,
                                                          cwd='{}/src'.format(output_dir),
                                                          env=os.environ).stdout.strip().split('\n')[-4:]
-
+        gt = float(gt)
         acc_c2i = float(acc_c2i)
         acc_i2c = float(acc_i2c)
         acc_joint = float(acc_joint)
@@ -296,7 +296,7 @@ def eval_generation(n_iter):
                                                                                cwd='{}/src'.format(output_dir),
                                                                                env=os.environ).stdout.strip().split(
             '\n')[-6:]
-
+        gt = float(gt)
         acc_syn_c = float(acc_syn_c)
         acc_syn_i = float(acc_syn_i)
         acc_c2i = float(acc_c2i)
@@ -587,8 +587,8 @@ def main():
         if not opt.no_eval and n_iter > 0 and n_iter % opt.eval_interval == 0:
             try:
                 eval_generation(n_iter)
-            except:
-                print('Something wrong during evaluation')
+            except Exception as e:
+                print('Something wrong during evaluation: ', e)
 
     if not opt.deterministic:
         paired_x1, paired_x2 = next(paired_dataloader)
@@ -602,8 +602,8 @@ def main():
     if not opt.no_eval:
         try:
             eval_generation(n_iter)
-        except:
-            print('Something wrong during evaluation')
+        except Exception as e:
+            print('Something wrong during evaluation: ', e)
 
 
 if __name__ == '__main__':

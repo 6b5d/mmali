@@ -581,8 +581,8 @@ def main():
         if not opt.no_eval and n_iter > 0 and n_iter % opt.eval_interval == 0:
             try:
                 eval_generation(n_iter)
-            except:
-                print('Something wrong during evaluation')
+            except Exception as e:
+                print('Something wrong during evaluation: ', e)
 
     if not opt.deterministic:
         paired_x1, paired_x2 = next(paired_dataloader)
@@ -596,8 +596,8 @@ def main():
     if not opt.no_eval:
         try:
             eval_generation(n_iter)
-        except:
-            print('Something wrong during evaluation')
+        except Exception as e:
+            print('Something wrong during evaluation: ', e)
 
 
 if __name__ == '__main__':
