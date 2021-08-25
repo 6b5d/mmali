@@ -337,11 +337,11 @@ def main():
     content_dim = opt.latent_dim - opt.style_dim
 
     x1_discriminators = nn.ModuleList([
-        models.cub_caption.XZDiscriminator(latent_dim=opt.latent_dim, emb_size=opt.emb_size),
+        models.cub_caption.XZDiscriminator(latent_dim=opt.latent_dim, emb_size=opt.emb_size, output_dim=3),
         models.cub_caption.XZDiscriminator(latent_dim=opt.latent_dim, emb_size=opt.emb_size),
     ])
     x2_discriminators = nn.ModuleList([
-        models.cub_image.XZDiscriminatorFT(latent_dim=opt.latent_dim),
+        models.cub_image.XZDiscriminatorFT(latent_dim=opt.latent_dim, output_dim=3),
         models.cub_image.XZDiscriminatorFT(latent_dim=opt.latent_dim),
     ])
     joint_discriminator = models.cub_caption_image.XXDiscriminatorFT(emb_size=opt.emb_size)
