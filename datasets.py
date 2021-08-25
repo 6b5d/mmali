@@ -153,17 +153,6 @@ class MNISTSVHN(data.Dataset):
             return self.svhn[self.svhn_idx[index]][0], self.mnist[self.mnist_idx[index]][0]
 
 
-class CUBCaption(data.Dataset):
-    def __init__(self):
-        super(CUBCaption, self).__init__()
-
-    def __len__(self):
-        pass
-
-    def __getitem__(self, index):
-        pass
-
-
 class CUBCaptionVector(data.Dataset):
     def __init__(self, root, split='train', normalization=None, transform=None):
         super().__init__()
