@@ -8,7 +8,6 @@ class Encoder(nn.Module):
 
         use_bias = False
         self.model = nn.Sequential(
-            nn.Linear(emb_size, 128),
             # size: 1 x 32 x 128
 
             nn.Conv2d(1, num_features, 4, 2, 1, bias=use_bias),
@@ -79,10 +78,7 @@ class Decoder(nn.Module):
             # size: (num_features) x 32 x 128
 
             nn.ConvTranspose2d(num_features, 1, 4, 2, 1, bias=True),
-            nn.ReLU(True),
-
-            nn.Linear(128, emb_size),
-            nn.Sigmoid(),
+            nn.Tanh(),
         )
 
     def forward(self, z):
@@ -96,7 +92,6 @@ class XZDiscriminator(nn.Module):
         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
         use_bias = True
         self.x_discrimination = nn.Sequential(
-            sn(nn.Linear(emb_size, 128)),
             # size: 1 x 32 x 128
 
             sn(nn.Conv2d(1, num_features, 4, 2, 1, bias=use_bias)),

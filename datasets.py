@@ -154,13 +154,14 @@ class MNISTSVHN(data.Dataset):
 
 
 class CUBCaptionVector(data.Dataset):
-    def __init__(self, root, split='train', normalization=None, transform=None):
+    def __init__(self, root, split='train', normalization=None, margin=1.0, transform=None):
         super().__init__()
         assert split in ['train', 'test']
 
         self.root = root
         self.split = split
         self.normalization = normalization
+        self.margin = margin
         self.transform = transform
 
         self.model = gensim.models.FastText.load(os.path.join(self.root, 'cub/processed/fasttext.model'))
@@ -173,11 +174,12 @@ class CUBCaptionVector(data.Dataset):
         if self.normalization:
             assert normalization in ['min-max', 'mean-std']
             if self.normalization == 'min-max':
-                self.normalizer = d['min'], d['max'] - d['min']
+                self.normalizer = self.margin * 2.0 / (d['max'] - d['min']), \
+                                  self.margin * (-2.0 * d['min'] / (d['max'] - d['min']) - 1.0)
             elif self.normalization == 'mean-std':
-                self.normalizer = d['mean'], d['std']
+                self.normalizer = 1.0 / d['std'], -d['mean'] / d['std']
 
-            self.data = (self.data - self.normalizer[0]) / self.normalizer[1]
+            self.data = self.data * self.normalizer[0] + self.normalizer[1]
 
         print('shape:', self.data.size())
         print('min:', self.data.min().item(), 'max:', self.data.max().item(),
@@ -192,15 +194,15 @@ class CUBCaptionVector(data.Dataset):
         embeddings = np.stack(embeddings, axis=0)
         embeddings = np.expand_dims(embeddings, axis=1)
         embeddings = torch.from_numpy(embeddings)
-        if self.normalization:
-            embeddings = (embeddings - self.normalizer[0]) / self.normalizer[1]
+        if self.normalizer:
+            embeddings = embeddings * self.normalizer[0] + self.normalizer[1]
         return embeddings
 
     def decode(self, x):
         # N, 1, H, W
         x = x.squeeze(dim=1)
-        if self.normalization:
-            x = self.normalizer[1] * x + self.normalizer[0]
+        if self.normalizer:
+            x = (x - self.normalizer[1]) / self.normalizer[0]
 
         x = x.cpu().numpy()
         sentences = []
@@ -222,7 +224,7 @@ class CUBCaptionVector(data.Dataset):
 
 
 class CUBImageFeature(data.Dataset):
-    def __init__(self, root, split='train', normalization=None, transform=None):
+    def __init__(self, root, split='train', normalization=None, margin=1.0, transform=None):
         super().__init__()
 
         assert split in ['train', 'test']
@@ -230,6 +232,7 @@ class CUBImageFeature(data.Dataset):
         self.root = root
         self.split = split
         self.normalization = normalization
+        self.margin = margin
         self.transform = transform
 
         d = torch.load(os.path.join(self.root,
@@ -240,11 +243,12 @@ class CUBImageFeature(data.Dataset):
         if self.normalization:
             assert normalization in ['min-max', 'mean-std']
             if self.normalization == 'min-max':
-                self.normalizer = d['min'], d['max'] - d['min']
+                self.normalizer = margin * (2.0 / (d['max'] - d['min'])), \
+                                  margin * (-2.0 * d['min'] / (d['max'] - d['min']) - 1.0)
             elif self.normalization == 'mean-std':
-                self.normalizer = d['mean'], d['std']
+                self.normalizer = 1.0 / d['std'], -d['mean'] / d['std']
 
-            self.data = (self.data - self.normalizer[0]) / self.normalizer[1]
+            self.data = self.data * self.normalizer[0] + self.normalizer[1]
 
         print('shape:', self.data.size())
         print('min:', self.data.min().item(), 'max:', self.data.max().item(),
@@ -254,8 +258,8 @@ class CUBImageFeature(data.Dataset):
         return len(self.data)
 
     def decode(self, x):
-        if self.normalization:
-            x = self.normalizer[1] * x + self.normalizer[0]
+        if self.normalizer:
+            x = (x - self.normalizer[1]) / self.normalizer[0]
         return x
 
     def __getitem__(self, index):
