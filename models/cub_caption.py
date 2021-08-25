@@ -129,21 +129,17 @@ class XZDiscriminator(nn.Module):
         self.z_discrimination = nn.Sequential(
             sn(nn.Linear(latent_dim, 512)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.2),
 
             sn(nn.Linear(512, 512)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.2),
         )
 
         self.discriminator = nn.Sequential(
             sn(nn.Linear(1024, 1024)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.2),
 
             sn(nn.Linear(1024, 1024)),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.2),
 
             sn(nn.Linear(1024, output_dim)),
         )

@@ -163,10 +163,9 @@ img_proj = img_proj.to(device)
 
 
 def calc_cross_coherence(loader, cap_encoder, cap_decoder, img_encoder, img_decoder):
-    cap = []
-    img = []
-    cap2img = []
-    img2cap = []
+    score_gt = []
+    score_c2i = []
+    score_i2c = []
 
     for x1, x2 in loader:
         x1 = x1.to(device)
@@ -175,19 +174,17 @@ def calc_cross_coherence(loader, cap_encoder, cap_decoder, img_encoder, img_deco
         dec_x2 = img_decoder(cap_encoder(x1))
         dec_x1 = cap_decoder(img_encoder(x2))
 
-        cap.append(x1)
-        img.append(x2)
-        img2cap.append(dec_x1)
-        cap2img.append(dec_x2)
+        cap = index2emb(word2index(x1_dataset.decode(x1), vocabulary), embeddings, weights, u)
+        img = x2_dataset.decode(x2)
 
-    cap = index2emb(word2index(x1_dataset.decode(torch.cat(cap, dim=0)), vocabulary), embeddings, weights, u)
-    img = x2_dataset.decode(torch.cat(img, dim=0))
-    cap2img = x2_dataset.decode(torch.cat(cap2img, dim=0))
-    img2cap = index2emb(word2index(x1_dataset.decode(torch.cat(img2cap, dim=0)), vocabulary), embeddings, weights, u)
+        img2cap = index2emb(word2index(x1_dataset.decode(dec_x1), vocabulary), embeddings, weights, u)
+        cap2img = x2_dataset.decode(dec_x2)
 
-    score_cap2img = calculate_corr(cap, cap2img, cap_mean, cap_proj, img_mean, img_proj)
-    score_img2cap = calculate_corr(img2cap, img, cap_mean, cap_proj, img_mean, img_proj)
-    return score_cap2img, score_img2cap
+        score_gt.append(calculate_corr(cap, img, cap_mean, cap_proj, img_mean, img_proj))
+        score_c2i.append(calculate_corr(cap, cap2img, cap_mean, cap_proj, img_mean, img_proj))
+        score_i2c.append(calculate_corr(img2cap, img, cap_mean, cap_proj, img_mean, img_proj))
+
+    return sum(score_gt) / len(score_gt), sum(score_c2i) / len(score_c2i), sum(score_i2c) / len(score_i2c)
 
 
 def calc_joint_coherence(cap_decoder, img_decoder, total=10000):
@@ -204,10 +201,10 @@ def calc_joint_coherence(cap_decoder, img_decoder, total=10000):
 
 
 def calc_synergy_coherence(loader, cap_encoder, cap_decoder, img_encoder, img_decoder):
-    cap = []
-    img = []
-    cap2cap = []
-    img2img = []
+    score_gt = []
+    score_c2c = []
+    score_i2i = []
+
     for x1, x2 in loader:
         x1 = x1.to(device)
         x2 = x2.to(device)
@@ -222,19 +219,17 @@ def calc_synergy_coherence(loader, cap_encoder, cap_decoder, img_encoder, img_de
         dec_x1 = cap_decoder(torch.cat([s1, c], dim=1))
         dec_x2 = img_decoder(torch.cat([s2, c], dim=1))
 
-        cap.append(x1)
-        img.append(x2)
-        cap2cap.append(dec_x1)
-        img2img.append(dec_x2)
+        cap = index2emb(word2index(x1_dataset.decode(x1), vocabulary), embeddings, weights, u)
+        img = x2_dataset.decode(x2)
 
-    cap = index2emb(word2index(x1_dataset.decode(torch.cat(cap, dim=0)), vocabulary), embeddings, weights, u)
-    img = x2_dataset.decode(torch.cat(img, dim=0))
-    img2img = x2_dataset.decode(torch.cat(img2img, dim=0))
-    cap2cap = index2emb(word2index(x1_dataset.decode(torch.cat(cap2cap, dim=0)), vocabulary), embeddings, weights, u)
+        cap2cap = index2emb(word2index(x1_dataset.decode(dec_x1), vocabulary), embeddings, weights, u)
+        img2img = x2_dataset.decode(dec_x2)
 
-    score_cap2cap = calculate_corr(cap2cap, img, cap_mean, cap_proj, img_mean, img_proj)
-    score_img2img = calculate_corr(cap, img2img, cap_mean, cap_proj, img_mean, img_proj)
-    return score_cap2cap, score_img2img
+        score_gt.append(calculate_corr(cap, img, cap_mean, cap_proj, img_mean, img_proj))
+        score_c2c.append(calculate_corr(cap2cap, img, cap_mean, cap_proj, img_mean, img_proj))
+        score_i2i.append(calculate_corr(cap, img2img, cap_mean, cap_proj, img_mean, img_proj))
+
+    return sum(score_gt) / len(score_gt), sum(score_c2c) / len(score_c2c), sum(score_i2i) / len(score_i2i)
 
 
 @torch.no_grad()
@@ -273,13 +268,17 @@ def main():
     print('{:.6f}'.format(groundtruth))
 
     if not opt.deterministic:
-        acc_syn_cap, acc_syn_img = calc_synergy_coherence(paired_dataloader,
-                                                          cap_encoder, cap_decoder,
-                                                          img_encoder, img_decoder)
+        acc_syn_gt, acc_syn_cap, acc_syn_img = calc_synergy_coherence(paired_dataloader,
+                                                                      cap_encoder, cap_decoder,
+                                                                      img_encoder, img_decoder)
+
         print('{:.6f}'.format(acc_syn_cap))
         print('{:.6f}'.format(acc_syn_img))
 
-    acc_c2i, acc_i2c = calc_cross_coherence(paired_dataloader, cap_encoder, cap_decoder, img_encoder, img_decoder)
+    acc_gt, acc_c2i, acc_i2c = calc_cross_coherence(paired_dataloader,
+                                                    cap_encoder, cap_decoder,
+                                                    img_encoder, img_decoder)
+
     print('{:.6f}'.format(acc_c2i))
     print('{:.6f}'.format(acc_i2c))
 
