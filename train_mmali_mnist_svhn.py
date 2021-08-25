@@ -399,11 +399,11 @@ def main():
     # joint_discriminator = models.mnist_svhn.XXFeatureDiscriminator(x1_feature, x2_feature)
 
     x1_discriminators = nn.ModuleList([
-        models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim),
+        models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, output_dim=3),
         models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim),
     ])
     x2_discriminators = nn.ModuleList([
-        models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim),
+        models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, output_dim=3),
         models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim),
     ])
     joint_discriminator = models.mnist_svhn.XXDiscriminator(img_shape=mnist_img_shape, channels=svhn_channels)
