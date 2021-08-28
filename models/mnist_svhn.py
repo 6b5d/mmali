@@ -175,3 +175,20 @@ class XXZDiscriminator(nn.Module):
         hz = self.z_discrimination(z)
         out = self.joint_discriminator(torch.cat([hx1, hx2, z], dim=1))
         return out
+
+
+class XXDiscriminatorDot(nn.Module):
+    def __init__(self, x1_discrimination, x2_discrimination, hidden_dim=256, spectral_norm=True):
+        super().__init__()
+
+        self.x1_discrimination = x1_discrimination
+        self.x2_discrimination = x2_discrimination
+        sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
+        self.fc1 = sn(nn.Linear(hidden_dim, hidden_dim))
+        self.fc2 = sn(nn.Linear(hidden_dim, hidden_dim))
+
+    def forward(self, x1, x2):
+        hx1 = self.fc1(self.x1_discrimination(x1))
+        hx2 = self.fc2(self.x2_discrimination(x2))
+        out = torch.sum(hx1 * hx2, dim=1, keepdim=True)
+        return out

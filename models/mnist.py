@@ -64,6 +64,38 @@ class XZDiscriminator(nn.Module):
         return self.model(torch.cat([x.view(x.size(0), -1), z], dim=1))
 
 
+class XZDiscriminator2(nn.Module):
+    def __init__(self, latent_dim,
+                 img_shape=(1, 28, 28), output_dim=1, spectral_norm=True):
+        super().__init__()
+
+        sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
+        self.x_discrimination = nn.Sequential(
+            nn.Flatten(start_dim=1),
+
+            sn(nn.Linear(int(np.prod(img_shape)), 256)),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+
+        self.z_discrimination = nn.Sequential(
+            sn(nn.Linear(latent_dim, 256)),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+
+        self.joint_discriminator = nn.Sequential(
+            sn(nn.Linear(512, 512)),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            sn(nn.Linear(512, output_dim)),
+        )
+
+    def forward(self, x, z):
+        hx = self.x_discrimination(x)
+        hz = self.z_discrimination(z)
+        out = self.joint_discriminator(torch.cat([hx, hz], dim=1))
+        return out
+
+
 class XDiscriminationFeature(nn.Module):
     def __init__(self, img_shape=(1, 28, 28), hidden_dim=400, extra_layers=0,
                  output_dim=256, spectral_norm=True):
