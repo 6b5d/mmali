@@ -188,7 +188,7 @@ class CUBCaptionVector(data.Dataset):
     def encode(self, texts):
         embeddings = []
         for words in texts:
-            emb = np.stack([self.model.wv.get_vector(w) for w in words], axis=0)
+            emb = np.stack([self.model.wv[w] for w in words], axis=0)
             embeddings.append(emb)
 
         embeddings = np.stack(embeddings, axis=0)
