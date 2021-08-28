@@ -37,7 +37,7 @@ class DecoderFT(nn.Module):
             ]
         layers += [
             nn.Linear(channels // 2, channels),
-            nn.Tanh(),
+            # nn.Tanh(),
         ]
         self.model = nn.Sequential(*layers)
 

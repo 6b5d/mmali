@@ -164,7 +164,7 @@ class CUBCaptionVector(data.Dataset):
         self.margin = margin
         self.transform = transform
 
-        self.model = gensim.models.FastText.load(os.path.join(self.root, 'cub/processed/fasttext.model'))
+        self.model = gensim.models.Word2Vec.load(os.path.join(self.root, 'cub/processed/word2vec.model'))
 
         d = torch.load(os.path.join(self.root,
                                     'cub/processed/cub-cap-{}.pt'.format(split)), map_location='cpu')
@@ -188,7 +188,7 @@ class CUBCaptionVector(data.Dataset):
     def encode(self, texts):
         embeddings = []
         for words in texts:
-            emb = np.stack([self.model.wv[w] for w in words], axis=0)
+            emb = np.stack([self.model.wv.get_vector(w) for w in words], axis=0)
             embeddings.append(emb)
 
         embeddings = np.stack(embeddings, axis=0)
@@ -205,10 +205,9 @@ class CUBCaptionVector(data.Dataset):
             x = (x - self.normalizer[1]) / self.normalizer[0]
 
         x = x.cpu().numpy()
-        sentences = []
-        for sent in x:
-            words = [self.model.wv.similar_by_vector(word)[0][0] for word in sent]
-            sentences.append(words)
+        sentences = [[
+            self.model.wv.similar_by_vector(word)[0][0] for word in sent
+        ] for sent in x]
 
         return sentences
 
