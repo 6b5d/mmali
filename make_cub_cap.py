@@ -87,7 +87,7 @@ def main():
     print(dataset_train.size())
     print(dataset_test.size())
     print(train_min.item(), train_max.item())
-    print(train_mean.size(), train_std.size())
+    print(train_mean.item(), train_std.item())
 
     os.makedirs(os.path.join(dataroot, 'cub/processed/'), exist_ok=True)
     torch.save({
