@@ -3,7 +3,6 @@ import os
 import numpy as np
 import torch
 from gensim.models import Word2Vec
-# from gensim.models import FastText
 from nltk.tokenize import sent_tokenize, word_tokenize
 
 from utils import OrderedCounter
