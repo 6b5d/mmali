@@ -1,5 +1,3 @@
-import math
-
 import torch
 import torch.nn as nn
 
@@ -8,15 +6,18 @@ class EncoderFT(nn.Module):
     def __init__(self, latent_dim, channels=2048):
         super().__init__()
 
-        dim_hidden = 256
-        layers = []
-        for i in range(int(math.log2(channels / dim_hidden))):
-            layers += [
-                nn.Linear(channels // (2 ** i), channels // (2 ** (i + 1))),
-                nn.ELU(inplace=True)
-            ]
-        layers += [nn.Linear(dim_hidden, latent_dim)]
-        self.model = nn.Sequential(*layers)
+        self.model = nn.Sequential(
+            nn.Linear(channels, channels // 2),
+            nn.ELU(inplace=True),
+
+            nn.Linear(channels // 2, channels // 4),
+            nn.ELU(inplace=True),
+
+            nn.Linear(channels // 4, channels // 8),
+            nn.ELU(inplace=True),
+
+            nn.Linear(channels // 8, latent_dim),
+        )
 
     def forward(self, x):
         return self.model(x)
@@ -26,20 +27,18 @@ class DecoderFT(nn.Module):
     def __init__(self, latent_dim, channels=2048):
         super().__init__()
 
-        dim_hidden = 256
-        layers = []
-        for i in range(int(math.log2(channels / dim_hidden))):
-            in_dim = latent_dim if i == 0 else dim_hidden * i
-            out_dim = dim_hidden if i == 0 else dim_hidden * (2 * i)
-            layers += [
-                nn.Linear(in_dim, out_dim),
-                nn.ELU(inplace=True),
-            ]
-        layers += [
+        self.model = nn.Sequential(
+            nn.Linear(latent_dim, channels // 8),
+            nn.ELU(inplace=True),
+
+            nn.Linear(channels // 8, channels // 4),
+            nn.ELU(inplace=True),
+
+            nn.Linear(channels // 4, channels // 2),
+            nn.ELU(inplace=True),
+
             nn.Linear(channels // 2, channels),
-            # nn.Tanh(),
-        ]
-        self.model = nn.Sequential(*layers)
+        )
 
     def forward(self, z):
         return self.model(z)
@@ -50,30 +49,30 @@ class XZDiscriminatorFT(nn.Module):
         super().__init__()
 
         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
-        dim_hidden = 256
-        layers = []
-        for i in range(int(math.log2(channels / dim_hidden))):
-            layers += [
-                sn(nn.Linear(channels // (2 ** i), channels // (2 ** (i + 1)))),
-                nn.LeakyReLU(0.2, inplace=True),
-            ]
-
-        layers += [
-            sn(nn.Linear(dim_hidden, dim_hidden)),
+        self.x_discrimination = nn.Sequential(
+            sn(nn.Linear(channels, channels // 2)),
             nn.LeakyReLU(0.2, inplace=True),
-        ]
-        self.x_discrimination = nn.Sequential(*layers)
+
+            sn(nn.Linear(channels // 2, channels // 4)),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            sn(nn.Linear(channels // 4, channels // 8)),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            sn(nn.Linear(channels // 8, channels // 8)),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
 
         self.z_discrimination = nn.Sequential(
-            sn(nn.Linear(latent_dim, dim_hidden)),
+            sn(nn.Linear(latent_dim, 256)),
             nn.LeakyReLU(0.2, inplace=True),
 
-            sn(nn.Linear(dim_hidden, dim_hidden)),
+            sn(nn.Linear(256, 256)),
             nn.LeakyReLU(0.2, inplace=True),
         )
 
         self.discriminator = nn.Sequential(
-            sn(nn.Linear(2 * dim_hidden, 512)),
+            sn(nn.Linear(512, 512)),
             nn.LeakyReLU(0.2, inplace=True),
 
             sn(nn.Linear(512, 512)),
