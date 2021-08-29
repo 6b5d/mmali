@@ -21,14 +21,15 @@ def preprocess(list_of_words, vocab, seq_len=32, sym_exc='<exc>', sym_pad='<pad>
     return processed_list_of_words
 
 
-def convert(texts, model, seq_len, emb_size):
-    dataset = np.zeros(shape=(len(texts), seq_len, emb_size), dtype='float32')
-    for i, words in enumerate(texts):
-        for j, w in enumerate(words[:seq_len]):
-            dataset[i][j] = model.wv.get_vector(w)
-
-    dataset = dataset.reshape((-1, 1, seq_len, emb_size))
-    return dataset
+def encode(texts, model):
+    embeddings = []
+    for words in texts:
+        emb = np.stack([model.wv.get_vector(w) for w in words], axis=0)
+        embeddings.append(emb)
+    embeddings = np.stack(embeddings, axis=0)
+    embeddings = np.expand_dims(embeddings, axis=1)
+    embeddings = torch.from_numpy(embeddings)
+    return embeddings
 
 
 def main():
@@ -64,7 +65,7 @@ def main():
     model.train(sentences=list_of_words_train, total_examples=len(list_of_words_train), epochs=epochs)
     print('vocabulary length:', len(vocab), ', model vocabulary length:', len(model.wv.vocab))
 
-    dataset_train = convert(list_of_words_train, model, seq_len, emb_size)
+    dataset_train = encode(list_of_words_train, model)
 
     # test set
     with open(os.path.join(dataroot, 'cub/text_testclasses.txt'), 'r') as file:
@@ -73,10 +74,7 @@ def main():
 
     list_of_words_test = preprocess(list_of_words_test, vocab,
                                     seq_len=seq_len, sym_exc=sym_exc, sym_pad=sym_pad, sym_eos=sym_eos)
-    dataset_test = convert(list_of_words_test, model, seq_len, emb_size)
-
-    dataset_train = torch.from_numpy(dataset_train)
-    dataset_test = torch.from_numpy(dataset_test)
+    dataset_test = encode(list_of_words_test, model)
 
     train_min = dataset_train.min()
     train_max = dataset_train.max()
