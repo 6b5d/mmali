@@ -164,7 +164,7 @@ class CUBCaptionVector(data.Dataset):
         self.margin = margin
         self.transform = transform
 
-        self.model = gensim.models.Word2Vec.load(os.path.join(self.root, 'cub/processed/word2vec.model'))
+        self.model = gensim.models.Word2Vec.load(os.path.join(self.root, 'cub/processed/saved_model.model'))
 
         d = torch.load(os.path.join(self.root,
                                     'cub/processed/cub-cap-{}.pt'.format(split)), map_location='cpu')
