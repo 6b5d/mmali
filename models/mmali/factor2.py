@@ -419,17 +419,29 @@ class FactorModelDoubleSemi(nn.Module):
             gen_inputs = {}
             with torch.set_grad_enabled(True):
                 for modality_key in self.sorted_keys:
-                    encoder = getattr(self.encoders, modality_key).module
-                    decoder = getattr(self.decoders, modality_key)
+                    if self.joint_rec:
+                        encoder = getattr(self.encoders, modality_key).module
+                        decoder = getattr(self.decoders, modality_key)
 
-                    real_x = real_inputs[modality_key]['x']
-                    real_z = real_inputs[modality_key]['z']
+                        real_x = real_inputs[modality_key]['x']
+                        real_z = real_inputs[modality_key]['z']
 
-                    enc_z_dist_param = encoder(real_x)
-                    enc_z = utils.reparameterize(enc_z_dist_param)
-                    dec_x = decoder(real_z)
+                        enc_z_dist_param = encoder(real_x)
+                        enc_z = utils.reparameterize(enc_z_dist_param)
+                        dec_x = decoder(real_z)
 
-                    gen_inputs[modality_key] = {'x': dec_x, 'z': enc_z, 'z_dist_param': enc_z_dist_param}
+                        gen_inputs[modality_key] = {'x': dec_x, 'z': enc_z, 'z_dist_param': enc_z_dist_param}
+                    else:
+                        encoder = getattr(self.encoders, modality_key)
+                        decoder = getattr(self.decoders, modality_key)
+
+                        real_x = real_inputs[modality_key]['x']
+                        real_z = real_inputs[modality_key]['z']
+
+                        enc_z = encoder(real_x)
+                        dec_x = decoder(real_z)
+
+                        gen_inputs[modality_key] = {'x': dec_x, 'z': enc_z}
 
             if joint:
                 label_value = 0
