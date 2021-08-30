@@ -212,7 +212,7 @@ class Decoder64(nn.Module):
             # size: (num_features) x 32 x 64
 
             nn.ConvTranspose2d(num_features, 1, 4, 2, 1, bias=True),
-            # nn.Tanh(),
+            nn.Tanh(),
         )
 
     def forward(self, z):
