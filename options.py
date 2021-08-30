@@ -47,3 +47,4 @@ parser.add_argument('--n_extra_x1', type=int, default=0)
 parser.add_argument('--n_extra_x2', type=int, default=0)
 
 parser.add_argument('--emb_size', type=int, default=128)
+parser.add_argument('--joint_rec', action='store_true')
