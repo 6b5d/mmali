@@ -436,6 +436,7 @@ def main():
         lambda_x_rec=opt.lambda_x_rec,
         lambda_c_rec=opt.lambda_c_rec,
         lambda_s_rec=opt.lambda_s_rec,
+        joint_rec=opt.joint_rec,
     )
 
     utils.init_param_normal(model)

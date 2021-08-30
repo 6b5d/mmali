@@ -8,7 +8,7 @@ import utils
 class FactorModelDoubleSemi(nn.Module):
     def __init__(self, encoders, decoders, xz_discriminators, joint_discriminator,
                  content_dim=20, lambda_unimodal=1.0, lambda_x_rec=0.0, lambda_c_rec=0.0, lambda_s_rec=0.0,
-                 joint_rec=True):
+                 joint_rec=False):
         super().__init__()
 
         assert len(encoders.items()) == len(decoders.items())
@@ -316,11 +316,6 @@ class FactorModelDoubleSemi(nn.Module):
 
         joint_score.append(-score_sum)
 
-        # for modality_key in self.sorted_keys:
-        #     # q(x, s, c) : p(x, s, c)
-        #     score = scores[modality_key][0]
-        #     joint_score.append(score - score_sum)
-
         return torch.cat(joint_score, dim=1)
 
     def forward_jsd2(self, real_inputs, train_d=True, joint=False, progress=None):
@@ -456,7 +451,7 @@ class FactorModelDoubleSemi(nn.Module):
                         curr_inputs[modality_key2]['x'] = real_inputs[modality_key2]['x']
                         curr_inputs[modality_key2]['z'] = torch.cat([style, content], dim=1)
 
-                    dis_score = self.calc_joint_score(curr_inputs, score_q)
+                    dis_score = self.calc_joint_score2(curr_inputs, score_q)
                     adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                                   for i in range(dis_score.size(1)) if i != label_value]
                     losses['joint_q{}'.format(label_value)] = 2. / (1 + self.n_modalities) * torch.mean(
@@ -470,7 +465,7 @@ class FactorModelDoubleSemi(nn.Module):
                     curr_inputs[modality_key]['x'] = gen_inputs[modality_key]['x']
                     curr_inputs[modality_key]['z'] = real_inputs[modality_key]['z']
 
-                dis_score = self.calc_joint_score(curr_inputs, score_p)
+                dis_score = self.calc_joint_score2(curr_inputs, score_p)
                 adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                               for i in range(dis_score.size(1)) if i != label_value]
                 losses['joint_p'] = 2. / (1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
