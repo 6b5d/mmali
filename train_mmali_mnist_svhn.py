@@ -363,19 +363,18 @@ def main():
 
     x2_universal_set = torch.utils.data.Subset(x2_dataset, total_idx2)
 
-    x1_dataloader = iter(
-        torch.utils.data.DataLoader(x1_universal_set,
-                                    batch_size=opt.batch_size,
-                                    num_workers=opt.n_cpu,
-                                    sampler=datasets.InfiniteSamplerWrapper(x1_universal_set),
-                                    pin_memory=True))
-
-    x2_dataloader = iter(
-        torch.utils.data.DataLoader(x2_universal_set,
-                                    batch_size=opt.batch_size,
-                                    num_workers=opt.n_cpu,
-                                    sampler=datasets.InfiniteSamplerWrapper(x2_universal_set),
-                                    pin_memory=True))
+    # x1_dataloader = iter(
+    #     torch.utils.data.DataLoader(x1_universal_set,
+    #                                 batch_size=opt.batch_size,
+    #                                 num_workers=opt.n_cpu,
+    #                                 sampler=datasets.InfiniteSamplerWrapper(x1_universal_set),
+    #                                 pin_memory=True))
+    # x2_dataloader = iter(
+    #     torch.utils.data.DataLoader(x2_universal_set,
+    #                                 batch_size=opt.batch_size,
+    #                                 num_workers=opt.n_cpu,
+    #                                 sampler=datasets.InfiniteSamplerWrapper(x2_universal_set),
+    #                                 pin_memory=True))
 
     paired_dataloader = iter(
         torch.utils.data.DataLoader(paired_dataset,
@@ -392,22 +391,15 @@ def main():
         factor = 2
     content_dim = opt.latent_dim - opt.style_dim
 
-    # x1_feature = models.mnist.XDiscriminationFeature(img_shape=mnist_img_shape)
-    # x2_feature = models.svhn.XDiscriminationFeature(channels=svhn_channels)
-    # x1_discriminator = models.mnist.XFeatureZDiscriminator(x1_feature, opt.latent_dim)
-    # x2_discriminator = models.svhn.XFeatureZDiscriminator(x2_feature, opt.latent_dim)
-    # joint_discriminator = models.mnist_svhn.XXFeatureDiscriminator(x1_feature, x2_feature)
-
     x1_discriminators = nn.ModuleList([
-        models.mnist.XZDiscriminator2(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, output_dim=3),
+        models.mnist.XZDiscriminator2(img_shape=mnist_img_shape, latent_dim=opt.latent_dim),
         models.mnist.XZDiscriminator2(img_shape=mnist_img_shape, latent_dim=opt.latent_dim),
     ])
     x2_discriminators = nn.ModuleList([
-        models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, output_dim=3),
+        models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim),
         models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim),
     ])
-    joint_discriminator = models.mnist_svhn.XXDiscriminatorDot(x1_discriminators[1].x_discrimination,
-                                                               x2_discriminators[1].x_discrimination)
+    joint_discriminator = models.mnist_svhn.XXDiscriminator(img_shape=mnist_img_shape, channels=svhn_channels)
 
     model = models.mmali.FactorModelDoubleSemi(
         encoders={
@@ -477,8 +469,6 @@ def main():
             d_losses = {}
 
             x1, x2 = next(paired_dataloader)
-            # x1, _ = next(x1_dataloader)
-            # x2, _ = next(x2_dataloader)
 
             x1, x2 = x1.to(device), x2.to(device)
 
@@ -496,11 +486,6 @@ def main():
             x1, x2 = next(paired_dataloader)
             unpaired_x1 = utils.permute_dim(x1, dim=0)
             unpaired_x2 = utils.permute_dim(x2, dim=0)
-
-            # unpaired_x1, _ = next(x1_dataloader)
-            # unpaired_x2, _ = next(x2_dataloader)
-            # unpaired_x1 = utils.permute_dim(unpaired_x1, dim=0)
-            # unpaired_x2 = utils.permute_dim(unpaired_x2, dim=0)
 
             x1, x2 = x1.to(device), x2.to(device)
             unpaired_x1, unpaired_x2 = unpaired_x1.to(device), unpaired_x2.to(device)
@@ -545,10 +530,6 @@ def main():
             g_losses = {}
 
             x1, x2 = next(paired_dataloader)
-            # x1, _ = next(x1_dataloader)
-            # x2, _ = next(x2_dataloader)
-            # x1, _ = next(x1_subsetloader)
-            # x2, _ = next(x2_subsetloader)
 
             x1, x2 = x1.to(device), x2.to(device)
             g_losses.update(model({
@@ -654,7 +635,4 @@ def main():
 # lambda_s_rec 0.05
 # lambda_unimodal 0.1
 if __name__ == '__main__':
-    # from mem import pre_occupy
-    #
-    # pre_occupy(percent=0.1)
     main()
