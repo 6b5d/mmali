@@ -3,7 +3,7 @@ import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--name', type=str, default='mnist_svhn', help='name of the experiment')
-parser.add_argument('--outroot', type=str, default='/tmp', help='where to save the results')
+parser.add_argument('--outroot', type=str, default='/tmp/exps', help='where to save the results')
 parser.add_argument('--dataroot', type=str, default='/tmp/data', help='root directory of datasets')
 parser.add_argument('--dataset', type=str, default='mnist')
 parser.add_argument('--checkpoint', type=str, help='pretrained checkpoint')
