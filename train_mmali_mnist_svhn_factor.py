@@ -364,8 +364,9 @@ def main():
                                             transform=torchvision.transforms.ToTensor())
     x2_dataset = torchvision.datasets.SVHN(opt.dataroot, split='train', download=True,
                                            transform=torchvision.transforms.ToTensor())
-    paired_dataset = datasets.PairedMNISTSVHN2(x1_dataset, x2_dataset,
-                                               max_d=opt.max_d, dm=opt.data_multiplication, use_all=False)
+    paired_dataset = datasets.PairedMNISTSVHN(x1_dataset, x2_dataset,
+                                              max_d=opt.max_d, dm=opt.data_multiplication, use_all=opt.use_all,
+                                              percentage=opt.percentage)
 
     paired_idx1 = paired_dataset.mnist_idx.unique().numpy()
     diff = np.setdiff1d(np.arange(len(x1_dataset)), paired_idx1)
