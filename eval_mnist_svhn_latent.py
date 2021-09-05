@@ -3,7 +3,6 @@ import torch.nn.functional as F
 import torch.utils.data
 import torchvision
 
-# import datasets
 import models.mnist
 import models.svhn
 import options
@@ -64,7 +63,6 @@ def main():
                                                   transform=torchvision.transforms.ToTensor())
         encoder = models.mnist.Encoder(img_shape=mnist_img_shape,
                                        latent_dim=opt.latent_dim if opt.deterministic else 2 * opt.latent_dim)
-
     elif opt.dataset == 'svhn':
         dataset_train = torchvision.datasets.SVHN(opt.dataroot,
                                                   split='train',
@@ -76,31 +74,6 @@ def main():
                                                  transform=torchvision.transforms.ToTensor())
         encoder = models.svhn.Encoder(channels=svhn_channels,
                                       latent_dim=opt.latent_dim if opt.deterministic else 2 * opt.latent_dim)
-    # elif opt.dataset == 'mnist_svhn':
-    #     dataset_train = datasets.PairedMNISTSVHN2(
-    #         opt.dataroot,
-    #         torchvision.datasets.MNIST(opt.dataroot,
-    #                                    train=True,
-    #                                    download=True,
-    #                                    transform=torchvision.transforms.ToTensor()),
-    #         torchvision.datasets.SVHN(opt.dataroot,
-    #                                   split='train',
-    #                                   download=True,
-    #                                   transform=torchvision.transforms.ToTensor()),
-    #         train=True, dm=1, use_all=True, label=True,
-    #     )
-    #     dataset_test = datasets.PairedMNISTSVHN2(
-    #         opt.dataroot,
-    #         torchvision.datasets.MNIST(opt.dataroot,
-    #                                    train=False,
-    #                                    download=True,
-    #                                    transform=torchvision.transforms.ToTensor()),
-    #         torchvision.datasets.SVHN(opt.dataroot,
-    #                                   split='test',
-    #                                   download=True,
-    #                                   transform=torchvision.transforms.ToTensor()),
-    #         train=False, dm=1, use_all=True, label=True,
-    #     )
     else:
         raise NotImplementedError
 
@@ -125,8 +98,13 @@ def main():
 
     input_dim = opt.latent_dim
     if opt.content_only:
-        encoder = models.ContentEncoder(encoder, opt.latent_dim - opt.style_dim)
         input_dim = opt.latent_dim - opt.style_dim
+        slicer = (slice(None), slice(opt.style_dim, None))  # [:, style_dim:]
+        encoder = models.SliceLayer(encoder, slicer)
+    elif opt.style_only:
+        input_dim = opt.style_dim
+        slicer = (slice(None), slice(None, opt.style_dim))
+        encoder = models.SliceLayer(encoder, slicer)  # [:, :opt.style_dim]
 
     encoder.requires_grad_(False)
     classifier = models.LinearClassifier(encoder, input_dim, 10)
