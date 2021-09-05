@@ -36,8 +36,8 @@ def main():
     dataroot = '/tmp/data'
     min_count = 3
     seq_len = 32
-    emb_size = 64
-    len_window = 3
+    emb_size = 128
+    len_window = 5
     epochs = 10
 
     sym_exc = '<exc>'
@@ -93,17 +93,19 @@ def main():
         'max': train_max,
         'mean': train_mean,
         'std': train_std
-    }, os.path.join(dataroot, 'cub/processed/cub-cap-train.pt'))
-
+    }, os.path.join(dataroot, 'cub/processed/cub-cap-train{}.pt'.format(emb_size)))
+    print('saved to {}'.format(os.path.join(dataroot, 'cub/processed/cub-cap-train{}.pt'.format(emb_size))))
     torch.save({
         'data': dataset_test,
         'min': train_min,
         'max': train_max,
         'mean': train_mean,
         'std': train_std,
-    }, os.path.join(dataroot, 'cub/processed/cub-cap-test.pt'))
+    }, os.path.join(dataroot, 'cub/processed/cub-cap-test{}.pt'.format(emb_size)))
+    print('saved to {}'.format(os.path.join(dataroot, 'cub/processed/cub-cap-test{}.pt'.format(emb_size))))
 
-    model.save(os.path.join(dataroot, 'cub/processed/saved_model.model'))
+    model.save(os.path.join(dataroot, 'cub/processed/savedmodel{}.model'.format(emb_size)))
+    print('saved to {}'.format(os.path.join(dataroot, 'cub/processed/savedmodel{}.model'.format(emb_size))))
 
 
 if __name__ == '__main__':
