@@ -104,7 +104,7 @@ def main():
     elif opt.style_only:
         input_dim = opt.style_dim
         slicer = (slice(None), slice(None, opt.style_dim))
-        encoder = models.SliceLayer(encoder, slicer)  # [:, :opt.style_dim]
+        encoder = models.SliceLayer(encoder, slicer)  # [:, :style_dim]
 
     encoder.requires_grad_(False)
     classifier = models.LinearClassifier(encoder, input_dim, 10)
