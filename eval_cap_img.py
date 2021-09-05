@@ -1,10 +1,10 @@
 import os
-import pickle
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.utils.data
+from gensim.models import FastText
 from nltk.tokenize import sent_tokenize, word_tokenize
 
 import datasets
@@ -20,7 +20,6 @@ print(opt)
 
 min_count = 3
 len_window = 3
-emb_size = 128
 seq_len = 32
 epochs = 10
 sym_exc = '<exc>'
@@ -72,14 +71,59 @@ def create_data_from(list_of_words, vocab):
     return list_of_indexes
 
 
+def create_embeddings(list_of_words, vocab):
+    model = FastText(size=300, window=len_window, min_count=min_count)
+    model.build_vocab(sentences=list_of_words)
+    model.train(sentences=list_of_words, total_examples=len(list_of_words), epochs=10)
+    i2w = vocab['i2w']
+    emb = []
+    for k in sorted(i2w.keys()):
+        emb.append(model.wv.get_vector(i2w[k]))
+
+    emb = np.array(emb)
+    return torch.from_numpy(emb).float()
+
+
+def create_weights(list_of_words, vocab, a=1e-3):
+    occ_register = OrderedCounter()
+    for words in list_of_words:
+        occ_register.update(words)
+
+    w2i = vocab['w2i']
+    weights = np.zeros(len(w2i), dtype='float32')
+    total_occ = sum(list(occ_register.values()))
+    exc_occ = 0
+    for w, occ in occ_register.items():
+        if w in w2i.keys():
+            weights[w2i[w]] = a / (a + occ / total_occ)
+        else:
+            exc_occ += occ
+    weights[0] = a / (a + exc_occ / total_occ)
+
+    return torch.from_numpy(weights).float()
+
+
+def create_pc(embeddings, weights, data):
+    emb_dataset = apply_weights(embeddings, weights, data)
+
+    _, _, V = torch.svd(emb_dataset - emb_dataset.mean(dim=0), some=True)
+    v = V[:, 0].unsqueeze(-1)
+    u = v.mm(v.t())
+    return u
+
+
 def apply_weights(word_emb, weights, data):
-    def truncate(s):
-        # np.where works for pytorch boolean tensor
-        return s[:np.where(s == 2)[0][0] + 1] if 2 in s else s
+    # def truncate(s):
+    #     # np.where works for pytorch boolean tensor
+    #     return s[:np.where(s == 2)[0][0] + 1] if 2 in s else s
+
+    def filter_func(w):
+        return w != '<pad>' and w != '<eos>'
 
     batch_emb = []
     for sent_i in data:
-        sent_trunc = truncate(sent_i)
+        sent_trunc = list(filter(filter_func, sent_i))
+
         emb_stacked = torch.stack([word_emb[idx] for idx in sent_trunc])
         weights_stacked = torch.stack([weights[idx] for idx in sent_trunc])
         batch_emb.append(torch.sum(emb_stacked * weights_stacked.unsqueeze(-1), dim=0) / emb_stacked.shape[0])
@@ -107,33 +151,21 @@ def calculate_corr(captions, images, cap_mean, cap_proj, img_mean, img_proj):
     return F.cosine_similarity((captions - cap_mean) @ cap_proj, (images - img_mean) @ img_proj).mean()
 
 
-with open(os.path.join(opt.dataroot, 'CCA_emb/cub.emb'), 'rb') as file:
-    embeddings = pickle.load(file)
-    embeddings = torch.from_numpy(embeddings).float()
-    print('loaded emb')
-
-with open(os.path.join(opt.dataroot, 'CCA_emb/cub.weights'), 'rb') as file:
-    weights = pickle.load(file)
-    weights = torch.from_numpy(weights).float()
-    print('loaded weights')
-
-with open(os.path.join(opt.dataroot, 'CCA_emb/cub.pc'), 'rb') as file:
-    u = pickle.load(file)
-    u = u.float()
-    print('loaded u')
-
 with open(raw_data_train_path, 'r') as file:
     sentences_train = sent_tokenize(file.read())
 list_of_words_train = [word_tokenize(line) for line in sentences_train]
+vocabulary = create_vocab_from(list_of_words_train)
+embeddings = create_embeddings(list_of_words_train, vocabulary)
+weights = create_weights(list_of_words_train, vocabulary)
 
 with open(raw_data_test_path, 'r') as file:
     sentences_test = sent_tokenize(file.read())
 list_of_words_test = [word_tokenize(line) for line in sentences_test]
-vocabulary = create_vocab_from(list_of_words_train)
 data_test = torch.from_numpy(np.array(create_data_from(list_of_words_test, vocabulary))).int()
+u = create_pc(embeddings, weights, data_test)
 
 x1_dataset = datasets.CUBCaptionVector(opt.dataroot, split='test', normalization='min-max')
-x2_dataset = datasets.CUBImageFeature(opt.dataroot, split='test', normalization='min-max')
+x2_dataset = datasets.CUBImageFeature(opt.dataroot, split='test', normalization=None)
 paired_dataset = datasets.CaptionImagePair(x1_dataset, x2_dataset)
 paired_dataloader = torch.utils.data.DataLoader(paired_dataset,
                                                 batch_size=opt.batch_size,
@@ -237,9 +269,8 @@ def main():
     conditional = models.DeterministicConditional if opt.deterministic else models.GaussianConditional
 
     cap_encoder = conditional(
-        models.cub_caption.Encoder(latent_dim=opt.latent_dim if opt.deterministic else 2 * opt.latent_dim,
-                                   emb_size=opt.emb_size))
-    cap_decoder = models.cub_caption.Decoder(latent_dim=opt.latent_dim, emb_size=opt.emb_size)
+        models.cub_caption.Encoder(latent_dim=opt.latent_dim if opt.deterministic else 2 * opt.latent_dim))
+    cap_decoder = models.cub_caption.Decoder(latent_dim=opt.latent_dim)
 
     img_encoder = conditional(
         models.cub_image.EncoderFT(latent_dim=opt.latent_dim if opt.deterministic else 2 * opt.latent_dim))
@@ -267,23 +298,24 @@ def main():
 
     print('{:.6f}'.format(groundtruth))
 
-    if not opt.deterministic:
-        acc_syn_gt, acc_syn_cap, acc_syn_img = calc_synergy_coherence(paired_dataloader,
-                                                                      cap_encoder, cap_decoder,
-                                                                      img_encoder, img_decoder)
+    with torch.no_grad():
+        if not opt.deterministic:
+            acc_syn_gt, acc_syn_cap, acc_syn_img = calc_synergy_coherence(paired_dataloader,
+                                                                          cap_encoder, cap_decoder,
+                                                                          img_encoder, img_decoder)
 
-        print('{:.6f}'.format(acc_syn_cap))
-        print('{:.6f}'.format(acc_syn_img))
+            print('{:.6f}'.format(acc_syn_cap))
+            print('{:.6f}'.format(acc_syn_img))
 
-    acc_gt, acc_c2i, acc_i2c = calc_cross_coherence(paired_dataloader,
-                                                    cap_encoder, cap_decoder,
-                                                    img_encoder, img_decoder)
+        acc_gt, acc_c2i, acc_i2c = calc_cross_coherence(paired_dataloader,
+                                                        cap_encoder, cap_decoder,
+                                                        img_encoder, img_decoder)
 
-    print('{:.6f}'.format(acc_c2i))
-    print('{:.6f}'.format(acc_i2c))
+        print('{:.6f}'.format(acc_c2i))
+        print('{:.6f}'.format(acc_i2c))
 
-    acc_joint = calc_joint_coherence(cap_decoder, img_decoder)
-    print('{:.6f}'.format(acc_joint))
+        acc_joint = calc_joint_coherence(cap_decoder, img_decoder)
+        print('{:.6f}'.format(acc_joint))
 
 
 if __name__ == '__main__':
