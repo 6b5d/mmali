@@ -41,6 +41,7 @@ parser.add_argument('--n_epochs', type=int, default=100, help='number of epochs 
 parser.add_argument('--data_multiplication', type=int, default=30)
 parser.add_argument('--max_d', type=int, default=10000)
 parser.add_argument('--use_all', action='store_true')
+parser.add_argument('--percentage', type=float, default=1.0)
 
 parser.add_argument('--n_extra', type=int, default=0)
 parser.add_argument('--n_extra_x1', type=int, default=0)
@@ -48,3 +49,4 @@ parser.add_argument('--n_extra_x2', type=int, default=0)
 
 parser.add_argument('--emb_size', type=int, default=128)
 parser.add_argument('--joint_rec', action='store_true')
+parser.add_argument('--n_modalities', type=int, default=3)

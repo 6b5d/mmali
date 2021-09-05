@@ -3,7 +3,6 @@ import os
 import shutil
 
 import torch
-import torch.nn as nn
 import torch.utils.data
 import torch.utils.tensorboard
 import torchvision.datasets
@@ -141,8 +140,9 @@ def main():
         conditional = models.GaussianConditional
         factor = 2
     content_dim = opt.latent_dim - opt.style_dim
+    total_latent_dim = opt.n_modalities * opt.style_dim + content_dim
 
-    model = models.mmali.FactorModelDoubleSemi(
+    model = models.mmali.JointModel(
         encoders={
             key_template.format(i):
                 conditional(
@@ -155,18 +155,11 @@ def main():
                 models.mnist.Decoder(img_shape=mnist_img_shape, latent_dim=opt.latent_dim)
             for i in range(opt.n_modalities)
         },
-        xz_discriminators={
-            key_template.format(i):
-                nn.ModuleList([
-                    models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim,
-                                                 output_dim=opt.n_modalities + 1),
-                    models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim),
-                ])
-            for i in range(opt.n_modalities)
-        },
-        joint_discriminator=models.multimnist.MultiXDiscriminator(n_modalities=opt.n_modalities),
+
+        discriminator=models.multimnist.MultiXZDiscriminator(n_modalities=opt.n_modalities,
+                                                             latent_dim=total_latent_dim,
+                                                             output_dim=opt.n_modalities + 1),
         content_dim=content_dim,
-        lambda_unimodal=opt.lambda_unimodal,
         lambda_x_rec=opt.lambda_x_rec,
         lambda_c_rec=opt.lambda_c_rec,
         lambda_s_rec=opt.lambda_s_rec,
