@@ -6,11 +6,11 @@ import torch.nn as nn
 class MultiXDiscriminator(nn.Module):
     def __init__(self, n_modalities, img_shape=(1, 28, 28), output_dim=1, spectral_norm=True):
         super().__init__()
-        self.num_modalities = n_modalities
+        self.n_modalities = n_modalities
 
         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
         self.x_discriminations = nn.ModuleList()
-        for i in range(self.num_modalities):
+        for i in range(self.n_modalities):
             self.x_discriminations.add_module(
                 'x{}_discrimination'.format(i),
                 nn.Sequential(
@@ -24,7 +24,7 @@ class MultiXDiscriminator(nn.Module):
                 ))
 
         self.joint_discriminator = nn.Sequential(
-            sn(nn.Linear(256 * self.num_modalities, 1024)),
+            sn(nn.Linear(256 * self.n_modalities, 1024)),
             nn.LeakyReLU(0.2, inplace=True),
 
             sn(nn.Linear(1024, 1024)),
@@ -46,11 +46,11 @@ class MultiXDiscriminator(nn.Module):
 class MultiXZDiscriminator(nn.Module):
     def __init__(self, n_modalities, latent_dim, img_shape=(1, 28, 28), output_dim=1, spectral_norm=True):
         super().__init__()
-        self.num_modalities = n_modalities
+        self.n_modalities = n_modalities
 
         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
         self.x_discriminations = nn.ModuleList()
-        for i in range(self.num_modalities):
+        for i in range(self.n_modalities):
             self.x_discriminations.add_module(
                 'x{}_discrimination'.format(i),
                 nn.Sequential(
@@ -72,7 +72,7 @@ class MultiXZDiscriminator(nn.Module):
         )
 
         self.joint_discriminator = nn.Sequential(
-            sn(nn.Linear(256 * (self.num_modalities + 1), 1024)),
+            sn(nn.Linear(256 * (self.n_modalities + 1), 1024)),
             nn.LeakyReLU(0.2, inplace=True),
 
             sn(nn.Linear(1024, 1024)),
@@ -83,9 +83,11 @@ class MultiXZDiscriminator(nn.Module):
 
     def forward(self, *inputs):
         hx = []
-        for i, x in enumerate(inputs):
+        for i in range(self.n_modalities):
             discrimination = getattr(self.x_discriminations, 'x{}_discrimination'.format(i))
-            hx.append(discrimination(x))
+            hx.append(discrimination(inputs[i]))
 
-        out = self.joint_discriminator(torch.cat(hx, dim=1))
+        hz = self.z_discrimination(inputs[-1])
+
+        out = self.joint_discriminator(torch.cat(hx + [hz], dim=1))
         return out

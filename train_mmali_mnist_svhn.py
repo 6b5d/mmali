@@ -338,8 +338,9 @@ def main():
                                             transform=torchvision.transforms.ToTensor())
     x2_dataset = torchvision.datasets.SVHN(opt.dataroot, split='train', download=True,
                                            transform=torchvision.transforms.ToTensor())
-    paired_dataset = datasets.PairedMNISTSVHN2(x1_dataset, x2_dataset,
-                                               max_d=opt.max_d, dm=opt.data_multiplication, use_all=opt.use_all)
+    paired_dataset = datasets.PairedMNISTSVHN(x1_dataset, x2_dataset,
+                                              max_d=opt.max_d, dm=opt.data_multiplication, use_all=opt.use_all,
+                                              percentage=opt.percentage)
 
     paired_idx1 = paired_dataset.mnist_idx.unique().numpy()
     diff = np.setdiff1d(np.arange(len(x1_dataset)), paired_idx1)
@@ -363,18 +364,18 @@ def main():
 
     x2_universal_set = torch.utils.data.Subset(x2_dataset, total_idx2)
 
-    # x1_dataloader = iter(
-    #     torch.utils.data.DataLoader(x1_universal_set,
-    #                                 batch_size=opt.batch_size,
-    #                                 num_workers=opt.n_cpu,
-    #                                 sampler=datasets.InfiniteSamplerWrapper(x1_universal_set),
-    #                                 pin_memory=True))
-    # x2_dataloader = iter(
-    #     torch.utils.data.DataLoader(x2_universal_set,
-    #                                 batch_size=opt.batch_size,
-    #                                 num_workers=opt.n_cpu,
-    #                                 sampler=datasets.InfiniteSamplerWrapper(x2_universal_set),
-    #                                 pin_memory=True))
+    x1_dataloader = iter(
+        torch.utils.data.DataLoader(x1_universal_set,
+                                    batch_size=opt.batch_size,
+                                    num_workers=opt.n_cpu,
+                                    sampler=datasets.InfiniteSamplerWrapper(x1_universal_set),
+                                    pin_memory=True))
+    x2_dataloader = iter(
+        torch.utils.data.DataLoader(x2_universal_set,
+                                    batch_size=opt.batch_size,
+                                    num_workers=opt.n_cpu,
+                                    sampler=datasets.InfiniteSamplerWrapper(x2_universal_set),
+                                    pin_memory=True))
 
     paired_dataloader = iter(
         torch.utils.data.DataLoader(paired_dataset,

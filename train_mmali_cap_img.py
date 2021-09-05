@@ -47,7 +47,8 @@ def save_samples(model, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter,
     x2_samples = [fixed_x2]
 
     if opt.deterministic:
-        pass
+        z1_sample = cap_encoder(fixed_x1)
+        z2_sample = img_encoder(fixed_x2)
     else:
         cap_encoder = cap_encoder.module
         img_encoder = img_encoder.module
@@ -263,22 +264,21 @@ def save_checkpoint(n_iter, model, model_ema, optimizer_D, optimizer_G):
 
 
 def eval_generation(n_iter):
-    cmd = 'python {}/src/eval_cap_img.py'.format(output_dir)
+    cmd = 'python {}/src/eval_cap_img_ft.py'.format(output_dir)
     cmd += ' --dataroot {}'.format(opt.dataroot)
     cmd += ' --n_cpu {}'.format(opt.n_cpu)
     cmd += ' --batch_size {}'.format(opt.batch_size)
     cmd += ' --style_dim {}'.format(opt.style_dim)
     cmd += ' --latent_dim {}'.format(opt.latent_dim)
     cmd += ' --checkpoint_dir {}'.format(output_dir)
-    cmd += ' --emb_size {}'.format(opt.emb_size)
 
     print('evaluating generation:', cmd)
 
     if opt.deterministic:
-        gt, acc_c2i, acc_i2c, acc_joint = subprocess.run(cmd,
-                                                         capture_output=True, text=True, shell=True,
-                                                         cwd='{}/src'.format(output_dir),
-                                                         env=os.environ).stdout.strip().split('\n')[-4:]
+        gt, acc_gt, acc_c2i, acc_i2c, acc_joint = subprocess.run(cmd,
+                                                                 capture_output=True, text=True, shell=True,
+                                                                 cwd='{}/src'.format(output_dir),
+                                                                 env=os.environ).stdout.strip().split('\n')[-5:]
         gt = float(gt)
         acc_c2i = float(acc_c2i)
         acc_i2c = float(acc_i2c)
@@ -290,12 +290,11 @@ def eval_generation(n_iter):
             'joint': acc_joint,
         }
     else:
-        gt, acc_syn_c, acc_syn_i, acc_c2i, acc_i2c, acc_joint = subprocess.run(cmd,
-                                                                               capture_output=True, text=True,
-                                                                               shell=True,
-                                                                               cwd='{}/src'.format(output_dir),
-                                                                               env=os.environ).stdout.strip().split(
-            '\n')[-6:]
+        ret_vals = subprocess.run(cmd,
+                                  capture_output=True, text=True, shell=True,
+                                  cwd='{}/src'.format(output_dir), env=os.environ).stdout.strip().split('\n')[-8:]
+
+        gt, acc_sync_gt, acc_syn_c, acc_syn_i, acc_gt, acc_c2i, acc_i2c, acc_joint = ret_vals
         gt = float(gt)
         acc_syn_c = float(acc_syn_c)
         acc_syn_i = float(acc_syn_i)
@@ -317,8 +316,8 @@ def eval_generation(n_iter):
 
 
 def main():
-    x1_dataset = datasets.CUBCaptionVector(opt.dataroot, split='train', normalization='min-max')
-    x2_dataset = datasets.CUBImageFeature(opt.dataroot, split='train', normalization='min-max')
+    x1_dataset = datasets.CUBCaptionFeature(opt.dataroot, split='train', normalization=None)
+    x2_dataset = datasets.CUBImageFeature(opt.dataroot, split='train', normalization=None)
     paired_dataset = datasets.CaptionImagePair(x1_dataset, x2_dataset)
 
     paired_dataloader = iter(
@@ -337,28 +336,27 @@ def main():
     content_dim = opt.latent_dim - opt.style_dim
 
     x1_discriminators = nn.ModuleList([
-        models.cub_caption.XZDiscriminator(latent_dim=opt.latent_dim, output_dim=3),
-        models.cub_caption.XZDiscriminator(latent_dim=opt.latent_dim),
+        models.cub_caption.XZDiscriminatorFT(latent_dim=opt.latent_dim, output_dim=3),
+        models.cub_caption.XZDiscriminatorFT(latent_dim=opt.latent_dim),
     ])
     x2_discriminators = nn.ModuleList([
         models.cub_image.XZDiscriminatorFT(latent_dim=opt.latent_dim, output_dim=3),
         models.cub_image.XZDiscriminatorFT(latent_dim=opt.latent_dim),
     ])
-    joint_discriminator = models.cub_caption_image.XXDiscriminatorDot(x1_discriminators[1].x_discrimination,
-                                                                      x2_discriminators[1].x_discrimination)
+    joint_discriminator = models.cub_caption_image.XXDiscriminatorFTFT()
 
     model = models.mmali.FactorModelDoubleSemi(
         encoders={
             key_cap:
                 conditional(
-                    models.cub_caption.Encoder(latent_dim=factor * opt.latent_dim)),
+                    models.cub_caption.EncoderFT(latent_dim=factor * opt.latent_dim)),
             key_img:
                 conditional(
                     models.cub_image.EncoderFT(latent_dim=factor * opt.latent_dim)),
         },
         decoders={
             key_cap:
-                models.cub_caption.Decoder(latent_dim=opt.latent_dim),
+                models.cub_caption.DecoderFT(latent_dim=opt.latent_dim),
             key_img:
                 models.cub_image.DecoderFT(latent_dim=opt.latent_dim),
         },
@@ -372,6 +370,8 @@ def main():
         lambda_x_rec=opt.lambda_x_rec,
         lambda_c_rec=opt.lambda_c_rec,
         lambda_s_rec=opt.lambda_s_rec,
+        joint_rec=opt.joint_rec,
+        mod_coeff={key_cap: 1000., key_img: 1.}
     )
 
     utils.init_param_normal(model)
@@ -412,8 +412,6 @@ def main():
             d_losses = {}
 
             x1, x2 = next(paired_dataloader)
-            # x1, _ = next(x1_dataloader)
-            # x2, _ = next(x2_dataloader)
 
             x1, x2 = x1.to(device), x2.to(device)
 
@@ -431,9 +429,6 @@ def main():
             x1, x2 = next(paired_dataloader)
             unpaired_x1 = utils.permute_dim(x1, dim=0)
             unpaired_x2 = utils.permute_dim(x2, dim=0)
-
-            # unpaired_x1, _ = next(x1_dataloader)
-            # unpaired_x2, _ = next(x2_dataloader)
 
             x1, x2 = x1.to(device), x2.to(device)
             unpaired_x1, unpaired_x2 = unpaired_x1.to(device), unpaired_x2.to(device)
@@ -478,10 +473,6 @@ def main():
             g_losses = {}
 
             x1, x2 = next(paired_dataloader)
-            # x1, _ = next(x1_dataloader)
-            # x2, _ = next(x2_dataloader)
-            # x1, _ = next(x1_subsetloader)
-            # x2, _ = next(x2_subsetloader)
 
             x1, x2 = x1.to(device), x2.to(device)
             g_losses.update(model({
@@ -581,7 +572,7 @@ def main():
                 'cross_{}'.format(key_img): se4.mean(),
             }, global_step=n_iter)
 
-            save_samples(model_ema, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter, x1_dataset)
+            # save_samples(model_ema, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter, x1_dataset)
             save_checkpoint(n_iter, model, model_ema, optimizer_D, optimizer_G)
             model.train()
 
@@ -597,7 +588,7 @@ def main():
         paired_x2 = paired_x2.to(device)
         log_entropy(model_ema, paired_x1, paired_x2, n_iter)
 
-    save_samples(model_ema, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter, x1_dataset)
+    # save_samples(model_ema, fixed_x1, fixed_x2, fixed_s1, fixed_s2, fixed_c, n_iter, x1_dataset)
     save_checkpoint(n_iter, model, model_ema, optimizer_D, optimizer_G)
 
     if not opt.no_eval:

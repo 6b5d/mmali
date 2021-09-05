@@ -75,8 +75,8 @@ class XZDiscriminatorFT(nn.Module):
             sn(nn.Linear(512, 512)),
             nn.LeakyReLU(0.2, inplace=True),
 
-            sn(nn.Linear(512, 512)),
-            nn.LeakyReLU(0.2, inplace=True),
+            # sn(nn.Linear(512, 512)),
+            # nn.LeakyReLU(0.2, inplace=True),
 
             sn(nn.Linear(512, output_dim)),
         )
