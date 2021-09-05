@@ -29,3 +29,14 @@ class LinearClassifier(nn.Module):
 
     def forward(self, x):
         return self.fc(self.module(x))
+
+
+class SliceLayer(nn.Module):
+    def __init__(self, module, slicers):
+        super().__init__()
+        self.module = module
+        self.slicers = slicers
+
+    def forward(self, *x):
+        out = self.module(*x)
+        return out[self.slicers]
