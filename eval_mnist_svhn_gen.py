@@ -201,15 +201,15 @@ def calc_synergy_coherence(paired_loader, mnist_encoder, mnist_decoder, mnist_cl
 
 
 def main():
-    paired_dataset = datasets.PairedMNISTSVHN2(torchvision.datasets.MNIST(opt.dataroot,
-                                                                          train=False,
-                                                                          download=True,
-                                                                          transform=torchvision.transforms.ToTensor()),
-                                               torchvision.datasets.SVHN(opt.dataroot,
-                                                                         split='test',
+    paired_dataset = datasets.PairedMNISTSVHN(torchvision.datasets.MNIST(opt.dataroot,
+                                                                         train=False,
                                                                          download=True,
                                                                          transform=torchvision.transforms.ToTensor()),
-                                               dm=opt.data_multiplication, use_all=True, label=True)
+                                              torchvision.datasets.SVHN(opt.dataroot,
+                                                                        split='test',
+                                                                        download=True,
+                                                                        transform=torchvision.transforms.ToTensor()),
+                                              dm=opt.data_multiplication, use_all=True, label=True)
 
     paired_loader = torch.utils.data.DataLoader(paired_dataset,
                                                 batch_size=opt.batch_size,
