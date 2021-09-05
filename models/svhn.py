@@ -3,24 +3,24 @@ import torch.nn as nn
 
 
 class Encoder(nn.Module):
-    def __init__(self, latent_dim, channels=3, num_features=32):
+    def __init__(self, latent_dim, channels=3, n_features=32):
         super().__init__()
 
         self.model = nn.Sequential(
             # 32x32 -> 16x16
-            nn.Conv2d(channels, num_features, 4, 2, 1),
+            nn.Conv2d(channels, n_features, 4, 2, 1),
             nn.ReLU(inplace=True),
 
             # 16x16 -> 8x8
-            nn.Conv2d(num_features, num_features * 2, 4, 2, 1),
+            nn.Conv2d(n_features, n_features * 2, 4, 2, 1),
             nn.ReLU(inplace=True),
 
             # 8x8 -> 4x4
-            nn.Conv2d(num_features * 2, num_features * 4, 4, 2, 1),
+            nn.Conv2d(n_features * 2, n_features * 4, 4, 2, 1),
             nn.ReLU(inplace=True),
 
             # 4x4 -> 1x1
-            nn.Conv2d(num_features * 4, latent_dim, 4, 1, 0),
+            nn.Conv2d(n_features * 4, latent_dim, 4, 1, 0),
             nn.Flatten(start_dim=1),
         )
 
@@ -29,26 +29,26 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, latent_dim, channels=3, num_features=32):
+    def __init__(self, latent_dim, channels=3, n_features=32):
         super().__init__()
 
         self.model = nn.Sequential(
             nn.Unflatten(1, (latent_dim, 1, 1)),
 
             # 1x1 -> 4x4
-            nn.ConvTranspose2d(latent_dim, num_features * 4, 4, 1, 0),
+            nn.ConvTranspose2d(latent_dim, n_features * 4, 4, 1, 0),
             nn.ReLU(inplace=True),
 
             # 4x4 -> 8x8
-            nn.ConvTranspose2d(num_features * 4, num_features * 2, 4, 2, 1),
+            nn.ConvTranspose2d(n_features * 4, n_features * 2, 4, 2, 1),
             nn.ReLU(inplace=True),
 
             # 8x8 -> 16x16
-            nn.ConvTranspose2d(num_features * 2, num_features, 4, 2, 1),
+            nn.ConvTranspose2d(n_features * 2, n_features, 4, 2, 1),
             nn.ReLU(inplace=True),
 
             # 16x16 -> 32x32
-            nn.ConvTranspose2d(num_features, channels, 4, 2, 1),
+            nn.ConvTranspose2d(n_features, channels, 4, 2, 1),
             nn.Sigmoid(),
         )
 
@@ -57,25 +57,25 @@ class Decoder(nn.Module):
 
 
 class XZDiscriminator(nn.Module):
-    def __init__(self, latent_dim, channels=3, num_features=32, output_dim=1, spectral_norm=True):
+    def __init__(self, latent_dim, channels=3, n_features=32, output_dim=1, spectral_norm=True):
         super().__init__()
 
         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
         self.x_discrimination = nn.Sequential(
             # 32x32 -> 16x16
-            sn(nn.Conv2d(channels, num_features, 4, 2, 1)),
+            sn(nn.Conv2d(channels, n_features, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 16x16 -> 8x8
-            sn(nn.Conv2d(num_features, num_features * 2, 4, 2, 1)),
+            sn(nn.Conv2d(n_features, n_features * 2, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 8x8 -> 4x4
-            sn(nn.Conv2d(num_features * 2, num_features * 4, 4, 2, 1)),
+            sn(nn.Conv2d(n_features * 2, n_features * 4, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 4x4 -> 1x1
-            sn(nn.Conv2d(num_features * 4, 256, 4, 1, 0)),
+            sn(nn.Conv2d(n_features * 4, 256, 4, 1, 0)),
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Flatten(start_dim=1),
@@ -107,25 +107,25 @@ class XZDiscriminator(nn.Module):
 
 
 class XDiscriminationFeature(nn.Module):
-    def __init__(self, channels=3, num_features=32, output_dim=256, spectral_norm=True):
+    def __init__(self, channels=3, n_features=32, output_dim=256, spectral_norm=True):
         super().__init__()
 
         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
         self.model = nn.Sequential(
             # 32x32 -> 16x16
-            sn(nn.Conv2d(channels, num_features, 4, 2, 1)),
+            sn(nn.Conv2d(channels, n_features, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 16x16 -> 8x8
-            sn(nn.Conv2d(num_features, num_features * 2, 4, 2, 1)),
+            sn(nn.Conv2d(n_features, n_features * 2, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 8x8 -> 4x4
-            sn(nn.Conv2d(num_features * 2, num_features * 4, 4, 2, 1)),
+            sn(nn.Conv2d(n_features * 2, n_features * 4, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 4x4 -> 1x1
-            sn(nn.Conv2d(num_features * 4, output_dim, 4, 1, 0)),
+            sn(nn.Conv2d(n_features * 4, output_dim, 4, 1, 0)),
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Flatten(start_dim=1),

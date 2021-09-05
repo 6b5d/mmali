@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class XXDiscriminator(nn.Module):
-    def __init__(self, img_shape=(1, 28, 28), channels=3, num_features=32, output_dim=1, spectral_norm=True):
+    def __init__(self, img_shape=(1, 28, 28), channels=3, n_features=32, output_dim=1, spectral_norm=True):
         super().__init__()
 
         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
@@ -21,19 +21,19 @@ class XXDiscriminator(nn.Module):
 
         self.x2_discrimination = nn.Sequential(
             # 32x32 -> 16x16
-            sn(nn.Conv2d(channels, num_features, 4, 2, 1)),
+            sn(nn.Conv2d(channels, n_features, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 16x16 -> 8x8
-            sn(nn.Conv2d(num_features, num_features * 2, 4, 2, 1)),
+            sn(nn.Conv2d(n_features, n_features * 2, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 8x8 -> 4x4
-            sn(nn.Conv2d(num_features * 2, num_features * 4, 4, 2, 1)),
+            sn(nn.Conv2d(n_features * 2, n_features * 4, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 4x4 -> 1x1
-            sn(nn.Conv2d(num_features * 4, 256, 4, 1, 0)),
+            sn(nn.Conv2d(n_features * 4, 256, 4, 1, 0)),
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Flatten(start_dim=1),
@@ -57,7 +57,7 @@ class XXDiscriminator(nn.Module):
 
 
 class XXDiscriminatorDot(nn.Module):
-    def __init__(self, img_shape=(1, 28, 28), channels=3, num_features=32, spectral_norm=True):
+    def __init__(self, img_shape=(1, 28, 28), channels=3, n_features=32, spectral_norm=True):
         super().__init__()
 
         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
@@ -73,19 +73,19 @@ class XXDiscriminatorDot(nn.Module):
 
         self.x2_discrimination = nn.Sequential(
             # 32x32 -> 16x16
-            sn(nn.Conv2d(channels, num_features, 4, 2, 1)),
+            sn(nn.Conv2d(channels, n_features, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 16x16 -> 8x8
-            sn(nn.Conv2d(num_features, num_features * 2, 4, 2, 1)),
+            sn(nn.Conv2d(n_features, n_features * 2, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 8x8 -> 4x4
-            sn(nn.Conv2d(num_features * 2, num_features * 4, 4, 2, 1)),
+            sn(nn.Conv2d(n_features * 2, n_features * 4, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 4x4 -> 1x1
-            sn(nn.Conv2d(num_features * 4, 256, 4, 1, 0)),
+            sn(nn.Conv2d(n_features * 4, 256, 4, 1, 0)),
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Flatten(start_dim=1),
@@ -160,7 +160,7 @@ class XXFeatureDiscriminator(nn.Module):
 
 
 class XXZDiscriminator(nn.Module):
-    def __init__(self, img_shape=(1, 28, 28), channels=3, latent_dim=20, num_features=32, output_dim=1,
+    def __init__(self, img_shape=(1, 28, 28), channels=3, latent_dim=20, n_features=32, output_dim=1,
                  spectral_norm=True):
         super().__init__()
 
@@ -177,19 +177,19 @@ class XXZDiscriminator(nn.Module):
 
         self.x2_discrimination = nn.Sequential(
             # 32x32 -> 16x16
-            sn(nn.Conv2d(channels, num_features, 4, 2, 1)),
+            sn(nn.Conv2d(channels, n_features, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 16x16 -> 8x8
-            sn(nn.Conv2d(num_features, num_features * 2, 4, 2, 1)),
+            sn(nn.Conv2d(n_features, n_features * 2, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 8x8 -> 4x4
-            sn(nn.Conv2d(num_features * 2, num_features * 4, 4, 2, 1)),
+            sn(nn.Conv2d(n_features * 2, n_features * 4, 4, 2, 1)),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 4x4 -> 1x1
-            sn(nn.Conv2d(num_features * 4, 256, 4, 1, 0)),
+            sn(nn.Conv2d(n_features * 4, 256, 4, 1, 0)),
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Flatten(start_dim=1),
