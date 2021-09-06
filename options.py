@@ -37,6 +37,7 @@ parser.add_argument('--joint_posterior', action='store_true')
 
 parser.add_argument('--content_only', action='store_true')
 parser.add_argument('--style_only', action='store_true')
+parser.add_argument('--mixed_code', action='store_true')
 parser.add_argument('--n_epochs', type=int, default=100, help='number of epochs of training')
 
 parser.add_argument('--data_multiplication', type=int, default=30)

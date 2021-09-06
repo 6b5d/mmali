@@ -105,6 +105,10 @@ def main():
         input_dim = opt.style_dim
         slicer = (slice(None), slice(None, opt.style_dim))
         encoder = models.SliceLayer(encoder, slicer)  # [:, :style_dim]
+    elif opt.mixed_code:
+        input_dim = opt.style_dim // 2 + (opt.latent_dim - opt.style_dim) // 2
+        slicer = (slice(None), slice(opt.style_dim // 2, opt.style_dim // 2 + input_dim))
+        encoder = models.SliceLayer(encoder, slicer)
 
     encoder.requires_grad_(False)
     classifier = models.LinearClassifier(encoder, input_dim, 10)
