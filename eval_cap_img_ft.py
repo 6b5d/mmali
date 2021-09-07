@@ -132,8 +132,8 @@ def calc_synergy_coherence(loader, cap_encoder, cap_decoder, img_encoder, img_de
         dec_x1 = cap_decoder(torch.cat([s1, c], dim=1))
         dec_x2 = img_decoder(torch.cat([s2, c], dim=1))
 
-        cap2cap.append(dec_x2)
-        img2img.append(dec_x1)
+        cap2cap.append(dec_x1)
+        img2img.append(dec_x2)
 
         score_gt.append(F.cosine_similarity((x1 - cap_mean) @ cap_proj, (x2 - img_mean) @ img_proj).mean())
         score_c2c.append(F.cosine_similarity((dec_x1 - cap_mean) @ cap_proj, (x2 - img_mean) @ img_proj).mean())
