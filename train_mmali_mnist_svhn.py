@@ -480,7 +480,7 @@ def main():
                 },
                 key_svhn: {
                     'x': x2,
-                    'z': torch.randn(opt.batch_size, opt.latent_dim).to(device)
+                    'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
                 },
             }, train_d=True, joint=False, progress=progress))
 
@@ -540,7 +540,7 @@ def main():
                 },
                 key_svhn: {
                     'x': x2,
-                    'z': torch.randn(opt.batch_size, opt.latent_dim).to(device)
+                    'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
                 },
             }, train_d=False, joint=False, progress=progress))
 
