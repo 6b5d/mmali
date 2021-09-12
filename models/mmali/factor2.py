@@ -402,8 +402,8 @@ class FactorModelDoubleSemi(nn.Module):
                         other_enc_c = other_enc_z[:, -self.content_dim:]
 
                         dis_other = discriminator(real_x, torch.cat([enc_s, other_enc_c], dim=1))
-                        losses['{}_c{}'.format(modality_key, label_value)] = F.cross_entropy(dis_other,
-                                                                                             label_value * label_ones)
+                        losses['{}_c{}'.format(modality_key, label_value)] = \
+                            2. / (1 + self.n_modalities) * F.cross_entropy(dis_other, label_value * label_ones)
 
                         label_value += 1
             else:
@@ -432,8 +432,10 @@ class FactorModelDoubleSemi(nn.Module):
                     # q(x, s, c) : p(x, s, c)
                     dis_0 = discriminator[0](real_x, enc_z)
                     dis_1 = discriminator[0](dec_x, real_z)
-                    losses['{}_c0'.format(modality_key)] = F.cross_entropy(dis_0, 0 * label_ones)
-                    losses['{}_c1'.format(modality_key)] = F.cross_entropy(dis_1, label_ones)
+                    losses['{}_c0'.format(modality_key)] = \
+                        2. / (1 + self.n_modalities) * F.cross_entropy(dis_0, 0 * label_ones)
+                    losses['{}_c1'.format(modality_key)] = \
+                        2. / (1 + self.n_modalities) * F.cross_entropy(dis_1, label_ones)
 
                     # shuffle x and z together
                     real_x_shuffled, enc_z_shuffled = utils.permute_dim([real_x, enc_z], dim=0)
