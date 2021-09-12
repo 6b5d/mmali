@@ -250,7 +250,9 @@ class FactorModelDoubleSemi(nn.Module):
                                                       dim=1))
 
                             x_rec_loss = (x_rec - x_real).square().mean()
-                            losses['{}_x_rec_joint'.format(modality_key)] = self.lambda_x_rec * x_rec_loss
+                            losses['{}_x_rec_joint'.format(modality_key)] = \
+                                self.mod_coeff[modality_key] * self.lambda_x_rec * x_rec_loss
+
             else:
                 # label_value = self.n_modalities + 1
                 # for modality_key in self.sorted_keys:
@@ -295,16 +297,36 @@ class FactorModelDoubleSemi(nn.Module):
                     loss = torch.mean(F.softplus(dis_real)) + torch.mean(F.softplus(-dis_fake))
                     losses['{}_real_fake'.format(modality_key)] = self.lambda_unimodal * loss
 
-                if self.lambda_s_rec > 0.0:
+                if not self.joint_rec:
+                    if self.lambda_x_rec > 0.0:
+                        for modality_key in self.sorted_keys:
+                            decoder = getattr(self.decoders, modality_key)
+                            x_real = real_inputs[modality_key]['x']
+                            enc_z = gen_inputs[modality_key]['z']
+
+                            x_rec = decoder(enc_z)
+
+                            x_rec_loss = (x_rec - x_real).square().mean()
+
+                            losses['{}_x_rec'.format(modality_key)] = \
+                                self.mod_coeff[modality_key] * self.lambda_x_rec * x_rec_loss
+
+                if (self.lambda_c_rec > 0.0 and not self.joint_rec) or self.lambda_s_rec > 0.0:
                     for modality_key in self.sorted_keys:
                         encoder = getattr(self.encoders, modality_key)
                         z_rec = encoder(gen_inputs[modality_key]['x'])
 
-                        s_real = real_inputs[modality_key]['z'][:, :-self.content_dim]
-                        s_rec = z_rec[:, :-self.content_dim]
+                        if self.lambda_c_rec > 0.0 and not self.joint_rec:
+                            c_real = real_inputs[modality_key]['z'][:, -self.content_dim:]
+                            c_rec = z_rec[:, -self.content_dim:]
+                            c_rec_loss = (c_rec - c_real).square().mean()
+                            losses['{}_c_rec'.format(modality_key)] = self.lambda_c_rec * c_rec_loss
 
-                        s_rec_loss = (s_rec - s_real).square().mean()
-                        losses['{}_s_rec'.format(modality_key)] = self.lambda_s_rec * s_rec_loss
+                        if self.lambda_s_rec > 0.0:
+                            s_real = real_inputs[modality_key]['z'][:, :-self.content_dim]
+                            s_rec = z_rec[:, :-self.content_dim]
+                            s_rec_loss = (s_rec - s_real).square().mean()
+                            losses['{}_s_rec'.format(modality_key)] = self.lambda_s_rec * s_rec_loss
 
         return losses
 
