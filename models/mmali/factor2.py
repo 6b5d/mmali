@@ -65,7 +65,7 @@ class FactorModelDoubleSemi(nn.Module):
             p.data.copy_(p_other.data)
 
     def forward(self, real_inputs, train_d=True, joint=False, progress=None):
-        return self.forward_jsd(real_inputs, train_d=train_d, joint=joint, progress=progress)
+        return self.forward_jsd2(real_inputs, train_d=train_d, joint=joint, progress=progress)
 
     def calc_joint_score(self, inputs, score_joint):
         scores = {}
@@ -90,10 +90,10 @@ class FactorModelDoubleSemi(nn.Module):
 
         joint_score.append(-score_sum)
 
-        # for modality_key in self.sorted_keys:
-        #     # q(x, s, c) : p(x, s, c)
-        #     score = scores[modality_key][0]
-        #     joint_score.append(score - score_sum)
+        for modality_key in self.sorted_keys:
+            # q(x, s, c) : p(x, s, c)
+            score = scores[modality_key][0]
+            joint_score.append(score - score_sum)
 
         return torch.cat(joint_score, dim=1)
 
@@ -183,7 +183,7 @@ class FactorModelDoubleSemi(nn.Module):
                         enc_z = encoder(real_x)
                         dec_x = decoder(real_z)
 
-                        gen_inputs[modality_key] = {'x': dec_x, 'z': enc_z, }
+                        gen_inputs[modality_key] = {'x': dec_x, 'z': enc_z}
 
             if joint:
                 label_value = 0
@@ -201,8 +201,8 @@ class FactorModelDoubleSemi(nn.Module):
                     dis_score = self.calc_joint_score(curr_inputs, score_q)
                     adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                                   for i in range(dis_score.size(1)) if i != label_value]
-                    losses['joint_q{}'.format(label_value)] = 2. / (1 + self.n_modalities) * torch.mean(
-                        torch.stack(adv_losses, dim=0), dim=0)
+                    losses['joint_q{}'.format(label_value)] = \
+                        2. / (1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
 
                     label_value += 1
 
@@ -215,8 +215,8 @@ class FactorModelDoubleSemi(nn.Module):
                 dis_score = self.calc_joint_score(curr_inputs, score_p)
                 adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                               for i in range(dis_score.size(1)) if i != label_value]
-                losses['joint_p{}'.format(label_value)] = 2. / (1 + self.n_modalities) * torch.mean(
-                    torch.stack(adv_losses, dim=0), dim=0)
+                losses['joint_p{}'.format(label_value)] = \
+                    2. / (1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
 
                 label_value += 1
 
@@ -279,7 +279,8 @@ class FactorModelDoubleSemi(nn.Module):
                 #     adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                 #                   for i in range(dis_score.size(1)) if i != label_value]
                 #
-                #     losses['joint_r{}'.format(label_value)] = torch.sum(torch.stack(adv_losses, dim=0), dim=0)
+                #     losses['joint_r{}'.format(label_value)] = \
+                #         2. / (1 + 2 * self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
                 #
                 #     label_value += 1
 
@@ -494,8 +495,8 @@ class FactorModelDoubleSemi(nn.Module):
                     dis_score = self.calc_joint_score2(curr_inputs, score_q)
                     adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                                   for i in range(dis_score.size(1)) if i != label_value]
-                    losses['joint_q{}'.format(label_value)] = 2. / (1 + self.n_modalities) * torch.mean(
-                        torch.stack(adv_losses, dim=0), dim=0)
+                    losses['joint_q{}'.format(label_value)] = \
+                        2. / (1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
 
                     label_value += 1
 
@@ -530,8 +531,9 @@ class FactorModelDoubleSemi(nn.Module):
                         adv_losses = [F.cross_entropy(dis_other, i * label_ones)
                                       for i in range(dis_other.size(1)) if i != label_value]
 
-                        losses['{}_c{}'.format(modality_key, label_value)] = self.lambda_unimodal * 2. / (
-                                1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
+                        losses['{}_c{}'.format(modality_key, label_value)] = \
+                            self.lambda_unimodal * \
+                            2. / (1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
 
                         label_value += 1
 
@@ -584,16 +586,19 @@ class FactorModelDoubleSemi(nn.Module):
                     adv_losses = [F.cross_entropy(dis_0, i * label_ones)
                                   for i in range(dis_0.size(1)) if i != label_value]
 
-                    losses['{}_c0'.format(modality_key)] = self.lambda_unimodal * 2. / (
-                            1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
+                    losses['{}_c0'.format(modality_key)] = \
+                        self.lambda_unimodal * \
+                        2. / (1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
 
                     # p(x, s, c)
                     dis_1 = discriminator(dec_x, real_z)
                     label_value = 1
                     adv_losses = [F.cross_entropy(dis_1, i * label_ones)
                                   for i in range(dis_1.size(1)) if i != label_value]
-                    losses['{}_c1'.format(modality_key)] = self.lambda_unimodal * 2. / (
-                            1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
+                    losses['{}_c1'.format(modality_key)] = \
+                        self.lambda_unimodal * \
+                        2. / (1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
+
                 if not self.joint_rec:
                     if self.lambda_x_rec > 0.0:
                         for modality_key in self.sorted_keys:
