@@ -65,7 +65,7 @@ class FactorModelDoubleSemi(nn.Module):
             p.data.copy_(p_other.data)
 
     def forward(self, real_inputs, train_d=True, joint=False, progress=None):
-        return self.forward_jsd2(real_inputs, train_d=train_d, joint=joint, progress=progress)
+        return self.forward_jsd(real_inputs, train_d=train_d, joint=joint, progress=progress)
 
     def calc_joint_score(self, inputs, score_joint):
         scores = {}
@@ -90,10 +90,10 @@ class FactorModelDoubleSemi(nn.Module):
 
         joint_score.append(-score_sum)
 
-        for modality_key in self.sorted_keys:
-            # q(x, s, c) : p(x, s, c)
-            score = scores[modality_key][0]
-            joint_score.append(score - score_sum)
+        # for modality_key in self.sorted_keys:
+        #     # q(x, s, c) : p(x, s, c)
+        #     score = scores[modality_key][0]
+        #     joint_score.append(score - score_sum)
 
         return torch.cat(joint_score, dim=1)
 
