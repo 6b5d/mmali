@@ -67,7 +67,7 @@ class FactorModelDoubleSemi(nn.Module):
     def forward(self, real_inputs, train_d=True, joint=False, progress=None):
         return self.forward_jsd(real_inputs, train_d=train_d, joint=joint, progress=progress)
 
-    def calc_joint_score(self, inputs, score_joint):
+    def calc_joint_score_jsd(self, inputs, score_joint):
         scores = {}
         for modality_key in self.sorted_keys:
             discriminator = getattr(self.xz_discriminators, modality_key)
@@ -198,7 +198,7 @@ class FactorModelDoubleSemi(nn.Module):
                         curr_inputs[modality_key2]['x'] = real_inputs[modality_key2]['x']
                         curr_inputs[modality_key2]['z'] = torch.cat([style, content], dim=1)
 
-                    dis_score = self.calc_joint_score(curr_inputs, score_q)
+                    dis_score = self.calc_joint_score_jsd(curr_inputs, score_q)
                     adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                                   for i in range(dis_score.size(1)) if i != label_value]
                     losses['joint_q{}'.format(label_value)] = \
@@ -212,7 +212,7 @@ class FactorModelDoubleSemi(nn.Module):
                     curr_inputs[modality_key]['x'] = gen_inputs[modality_key]['x']
                     curr_inputs[modality_key]['z'] = real_inputs[modality_key]['z']
 
-                dis_score = self.calc_joint_score(curr_inputs, score_p)
+                dis_score = self.calc_joint_score_jsd(curr_inputs, score_p)
                 adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                               for i in range(dis_score.size(1)) if i != label_value]
                 losses['joint_p{}'.format(label_value)] = \
@@ -331,7 +331,7 @@ class FactorModelDoubleSemi(nn.Module):
 
         return losses
 
-    def calc_joint_score2(self, inputs, score_joint):
+    def calc_joint_score_jsd2(self, inputs, score_joint):
         scores = {}
         for modality_key in self.sorted_keys:
             discriminator = getattr(self.xz_discriminators, modality_key)
@@ -492,7 +492,7 @@ class FactorModelDoubleSemi(nn.Module):
                         curr_inputs[modality_key2]['x'] = real_inputs[modality_key2]['x']
                         curr_inputs[modality_key2]['z'] = torch.cat([style, content], dim=1)
 
-                    dis_score = self.calc_joint_score2(curr_inputs, score_q)
+                    dis_score = self.calc_joint_score_jsd2(curr_inputs, score_q)
                     adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                                   for i in range(dis_score.size(1)) if i != label_value]
                     losses['joint_q{}'.format(label_value)] = \
@@ -506,7 +506,7 @@ class FactorModelDoubleSemi(nn.Module):
                     curr_inputs[modality_key]['x'] = gen_inputs[modality_key]['x']
                     curr_inputs[modality_key]['z'] = real_inputs[modality_key]['z']
 
-                dis_score = self.calc_joint_score2(curr_inputs, score_p)
+                dis_score = self.calc_joint_score_jsd2(curr_inputs, score_p)
                 adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                               for i in range(dis_score.size(1)) if i != label_value]
                 losses['joint_p'] = 2. / (1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
