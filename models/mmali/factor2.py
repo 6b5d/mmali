@@ -97,6 +97,44 @@ class FactorModelDoubleSemi(nn.Module):
 
         return torch.cat(joint_score, dim=1)
 
+    def calc_joint_score_jsd_v2(self, inputs, score_joint):
+        scores = {}
+        for modality_key in self.sorted_keys:
+            discriminator = getattr(self.xz_discriminators, modality_key)
+            x = inputs[modality_key]['x']
+            z = inputs[modality_key]['z']
+
+            score1 = discriminator[0](x, z)  # q(x, s, c) : p(x, s, c)
+            # we use encoder as discriminator, so disable gradient temporarily
+            encoder = getattr(self.encoders, modality_key).module
+            encoder.requires_grad_(False)
+            z_param = encoder(x)
+            mu, logvar = torch.split(z_param, z_param.size(1) // 2, dim=1)
+            mu_c, logvar_c = mu[:, -self.content_dim:], logvar[:, -self.content_dim:]
+            c = z[:, -self.content_dim:]
+            score2 = utils.calc_log_ratio_diag_gaussian(c,
+                                                        mean1=mu_c,
+                                                        logvar1=logvar_c,
+                                                        mean2=torch.zeros_like(mu_c),
+                                                        logvar2=torch.zeros_like(logvar_c))
+            score2 = score2.unsqueeze(dim=-1)
+            encoder.requires_grad_(True)
+
+            scores[modality_key] = [score1, score2]
+
+        score_sum = score_joint + torch.sum(torch.stack([s[0] - s[1]  # q(x, s) p(c) : p(x, s, c)
+                                                         for s in scores.values()], dim=0), dim=0)
+
+        joint_score = []
+        for modality_key in self.sorted_keys:
+            # q(x, s, c) : q(x, s) p(c)
+            score = scores[modality_key][1]
+            joint_score.append(score)
+
+        joint_score.append(-score_sum)
+
+        return torch.cat(joint_score, dim=1)
+
     def forward_jsd(self, real_inputs, train_d=True, joint=False, progress=None):
         self.generators.requires_grad_(not train_d)
         self.discriminators.requires_grad_(train_d)
@@ -203,7 +241,6 @@ class FactorModelDoubleSemi(nn.Module):
                                   for i in range(dis_score.size(1)) if i != label_value]
                     losses['joint_q{}'.format(label_value)] = \
                         2. / (1 + self.n_modalities) * torch.mean(torch.stack(adv_losses, dim=0), dim=0)
-
                     label_value += 1
 
                 score_p = self.joint_discriminator(*[gen_inputs[k]['x'] for k in self.sorted_keys])
