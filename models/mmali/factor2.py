@@ -65,7 +65,7 @@ class FactorModelDoubleSemi(nn.Module):
             p.data.copy_(p_other.data)
 
     def forward(self, real_inputs, train_d=True, joint=False, progress=None):
-        return self.forward_jsd(real_inputs, train_d=train_d, joint=joint, progress=progress)
+        return self.forward_jsd2(real_inputs, train_d=train_d, joint=joint, progress=progress)
 
     def calc_joint_score_jsd(self, inputs, score_joint):
         scores = {}
@@ -98,6 +98,8 @@ class FactorModelDoubleSemi(nn.Module):
         return torch.cat(joint_score, dim=1)
 
     def calc_joint_score_jsd_v2(self, inputs, score_joint):
+        score_joint_min, score_joint_max = score_joint.min().item(), score_joint.max().item()
+        # print('score_joint min max:', score_joint_min, score_joint_max)
         scores = {}
         for modality_key in self.sorted_keys:
             discriminator = getattr(self.xz_discriminators, modality_key)
@@ -118,6 +120,8 @@ class FactorModelDoubleSemi(nn.Module):
                                                         mean2=torch.zeros_like(mu_c),
                                                         logvar2=torch.zeros_like(logvar_c))
             score2 = score2.unsqueeze(dim=-1)
+            # print('score2 min max:', score2.min().item(), score2.max().item())
+            score2 = torch.clip(score2, -score_joint_max, -score_joint_min)
             encoder.requires_grad_(True)
 
             scores[modality_key] = [score1, score2]
@@ -182,19 +186,19 @@ class FactorModelDoubleSemi(nn.Module):
                     losses['{}_0'.format(modality_key)] = torch.mean(F.softplus(-dis_real)) + \
                                                           torch.mean(F.softplus(dis_fake))
 
-                    # shuffle x and z together
-                    real_x_shuffled, enc_z_shuffled = utils.permute_dim([real_x, enc_z], dim=0)
-                    enc_s_shuffled = enc_z_shuffled[:, :-self.content_dim]
-                    real_z_shuffled = utils.permute_dim(real_z, dim=0)
-                    real_c_shuffled = real_z_shuffled[:, -self.content_dim:]
-                    cs_shuffled = torch.cat([enc_s_shuffled, real_c_shuffled], dim=1)
-
-                    # q(x, s, c) : q(x, s) q(c)
-                    dis_real = discriminator[1](real_x, enc_z)
-                    dis_fake = discriminator[1](real_x_shuffled, cs_shuffled)
-
-                    losses['{}_1'.format(modality_key)] = torch.mean(F.softplus(-dis_real)) + \
-                                                          torch.mean(F.softplus(dis_fake))
+                    # # shuffle x and z together
+                    # real_x_shuffled, enc_z_shuffled = utils.permute_dim([real_x, enc_z], dim=0)
+                    # enc_s_shuffled = enc_z_shuffled[:, :-self.content_dim]
+                    # real_z_shuffled = utils.permute_dim(real_z, dim=0)
+                    # real_c_shuffled = real_z_shuffled[:, -self.content_dim:]
+                    # cs_shuffled = torch.cat([enc_s_shuffled, real_c_shuffled], dim=1)
+                    #
+                    # # q(x, s, c) : q(x, s) q(c)
+                    # dis_real = discriminator[1](real_x, enc_z)
+                    # dis_fake = discriminator[1](real_x_shuffled, cs_shuffled)
+                    #
+                    # losses['{}_1'.format(modality_key)] = torch.mean(F.softplus(-dis_real)) + \
+                    #                                       torch.mean(F.softplus(dis_fake))
         else:
             gen_inputs = {}
             with torch.set_grad_enabled(True):
@@ -236,7 +240,7 @@ class FactorModelDoubleSemi(nn.Module):
                         curr_inputs[modality_key2]['x'] = real_inputs[modality_key2]['x']
                         curr_inputs[modality_key2]['z'] = torch.cat([style, content], dim=1)
 
-                    dis_score = self.calc_joint_score_jsd(curr_inputs, score_q)
+                    dis_score = self.calc_joint_score_jsd_v2(curr_inputs, score_q)
                     adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                                   for i in range(dis_score.size(1)) if i != label_value]
                     losses['joint_q{}'.format(label_value)] = \
@@ -249,7 +253,7 @@ class FactorModelDoubleSemi(nn.Module):
                     curr_inputs[modality_key]['x'] = gen_inputs[modality_key]['x']
                     curr_inputs[modality_key]['z'] = real_inputs[modality_key]['z']
 
-                dis_score = self.calc_joint_score_jsd(curr_inputs, score_p)
+                dis_score = self.calc_joint_score_jsd_v2(curr_inputs, score_p)
                 adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                               for i in range(dis_score.size(1)) if i != label_value]
                 losses['joint_p{}'.format(label_value)] = \
@@ -380,6 +384,47 @@ class FactorModelDoubleSemi(nn.Module):
             score2 = discriminator[1](x, z)  # q(x, s, c) : q(x, s) p(c)
 
             scores[modality_key] = [score1, score2]
+
+        score_sum = score_joint + torch.sum(torch.stack([s[0] - s[1]  # q(x, s) p(c) : p(x, s, c)
+                                                         for s in scores.values()], dim=0), dim=0)
+
+        joint_score = []
+        for modality_key in self.sorted_keys:
+            # q(x, s, c) : q(x, s) p(c)
+            score = scores[modality_key][1]
+            joint_score.append(score)
+
+        joint_score.append(-score_sum)
+
+        return torch.cat(joint_score, dim=1)
+
+    def calc_joint_score_jsd2_v2(self, inputs, score_joint):
+        score_joint_min, score_joint_max = score_joint.min().item(), score_joint.max().item()
+        scores = {}
+        for modality_key in self.sorted_keys:
+            discriminator = getattr(self.xz_discriminators, modality_key)
+            x = inputs[modality_key]['x']
+            z = inputs[modality_key]['z']
+
+            score1 = discriminator[0](x, z)
+            score1 = (score1[:, 0] - score1[:, 1]).unsqueeze(dim=-1)  # q(x, s, c) : p(x, s, c)
+            encoder = getattr(self.encoders, modality_key).module
+            encoder.requires_grad_(False)
+            z_param = encoder(x)
+            mu, logvar = torch.split(z_param, z_param.size(1) // 2, dim=1)
+            mu_c, logvar_c = mu[:, -self.content_dim:], logvar[:, -self.content_dim:]
+            c = z[:, -self.content_dim:]
+            score2 = utils.calc_log_ratio_diag_gaussian(c,
+                                                        mean1=mu_c,
+                                                        logvar1=logvar_c,
+                                                        mean2=torch.zeros_like(mu_c),
+                                                        logvar2=torch.zeros_like(logvar_c))
+            score2 = score2.unsqueeze(dim=-1)
+            score2 = torch.clip(score2, -score_joint_max, -score_joint_min)
+            encoder.requires_grad_(True)
+
+            scores[modality_key] = [score1, score2]
+
 
         score_sum = score_joint + torch.sum(torch.stack([s[0] - s[1]  # q(x, s) p(c) : p(x, s, c)
                                                          for s in scores.values()], dim=0), dim=0)
