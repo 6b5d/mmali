@@ -80,7 +80,23 @@ def save_samples(model, fixed_X, fixed_S, fixed_c, n_iter):
                 enc_style_joint_gen_x, fixed_style_joint_gen_x
             ])
     else:
-        raise NotImplementedError
+        enc_C = Z_sample
+
+        avg_joint_c = avg_joint_z_sample
+        poe_joint_c = poe_joint_z_sample
+
+        for i in range(opt.n_modalities):
+            decoder = getattr(model.decoders, key_template.format(i))
+            rec_x = decoder(enc_C[i])
+            avg_joint_rec_x = decoder(avg_joint_c)
+            poe_joint_rec_x = decoder(poe_joint_c)
+            joint_gen_x = decoder(fixed_c)
+
+            X_samples[i].extend([
+                rec_x, avg_joint_rec_x,
+                poe_joint_rec_x,
+                joint_gen_x,
+            ])
 
     X_samples = [torch.cat(x_samples) for x_samples in X_samples]
 
@@ -124,6 +140,13 @@ def main():
                                                          torchvision.transforms.RandomRotation((i * 90, i * 90)),
                                                          torchvision.transforms.ToTensor()
                                                      ])))
+
+    unpaired_dataloader = [iter(
+        torch.utils.data.DataLoader(x_dataset,
+                                    batch_size=opt.batch_size,
+                                    num_workers=opt.n_cpu,
+                                    sampler=datasets.InfiniteSamplerWrapper(x_dataset),
+                                    pin_memory=True)) for x_dataset in x_datasets]
 
     paired_dataset = datasets.MultiMNIST(x_datasets, max_d=opt.max_d, dm=opt.data_multiplication)
 
@@ -209,6 +232,7 @@ def main():
             d_losses = {}
 
             X = next(paired_dataloader)
+            # X = [next(loader)[0] for loader in unpaired_dataloader]
 
             X = [x.to(device) for x in X]
 
@@ -221,6 +245,7 @@ def main():
 
             X = next(paired_dataloader)
             unpaired_X = [utils.permute_dim(x, dim=0) for x in X]
+            # unpaired_X = [next(loader)[0] for loader in unpaired_dataloader]
 
             X = [x.to(device) for x in X]
             unpaired_X = [x.to(device) for x in unpaired_X]
