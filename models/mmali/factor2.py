@@ -187,18 +187,18 @@ class FactorModelDoubleSemi(nn.Module):
                                                           torch.mean(F.softplus(dis_fake))
 
                     # # shuffle x and z together
-                    # real_x_shuffled, enc_z_shuffled = utils.permute_dim([real_x, enc_z], dim=0)
-                    # enc_s_shuffled = enc_z_shuffled[:, :-self.content_dim]
-                    # real_z_shuffled = utils.permute_dim(real_z, dim=0)
-                    # real_c_shuffled = real_z_shuffled[:, -self.content_dim:]
-                    # cs_shuffled = torch.cat([enc_s_shuffled, real_c_shuffled], dim=1)
-                    #
-                    # # q(x, s, c) : q(x, s) q(c)
-                    # dis_real = discriminator[1](real_x, enc_z)
-                    # dis_fake = discriminator[1](real_x_shuffled, cs_shuffled)
-                    #
-                    # losses['{}_1'.format(modality_key)] = torch.mean(F.softplus(-dis_real)) + \
-                    #                                       torch.mean(F.softplus(dis_fake))
+                    real_x_shuffled, enc_z_shuffled = utils.permute_dim([real_x, enc_z], dim=0)
+                    enc_s_shuffled = enc_z_shuffled[:, :-self.content_dim]
+                    real_z_shuffled = utils.permute_dim(real_z, dim=0)
+                    real_c_shuffled = real_z_shuffled[:, -self.content_dim:]
+                    cs_shuffled = torch.cat([enc_s_shuffled, real_c_shuffled], dim=1)
+
+                    # q(x, s, c) : q(x, s) q(c)
+                    dis_real = discriminator[1](real_x, enc_z)
+                    dis_fake = discriminator[1](real_x_shuffled, cs_shuffled)
+
+                    losses['{}_1'.format(modality_key)] = torch.mean(F.softplus(-dis_real)) + \
+                                                          torch.mean(F.softplus(dis_fake))
         else:
             gen_inputs = {}
             with torch.set_grad_enabled(True):
@@ -240,7 +240,7 @@ class FactorModelDoubleSemi(nn.Module):
                         curr_inputs[modality_key2]['x'] = real_inputs[modality_key2]['x']
                         curr_inputs[modality_key2]['z'] = torch.cat([style, content], dim=1)
 
-                    dis_score = self.calc_joint_score_jsd_v2(curr_inputs, score_q)
+                    dis_score = self.calc_joint_score_jsd(curr_inputs, score_q)
                     adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                                   for i in range(dis_score.size(1)) if i != label_value]
                     losses['joint_q{}'.format(label_value)] = \
@@ -253,7 +253,7 @@ class FactorModelDoubleSemi(nn.Module):
                     curr_inputs[modality_key]['x'] = gen_inputs[modality_key]['x']
                     curr_inputs[modality_key]['z'] = real_inputs[modality_key]['z']
 
-                dis_score = self.calc_joint_score_jsd_v2(curr_inputs, score_p)
+                dis_score = self.calc_joint_score_jsd(curr_inputs, score_p)
                 adv_losses = [F.cross_entropy(dis_score, i * label_ones)
                               for i in range(dis_score.size(1)) if i != label_value]
                 losses['joint_p{}'.format(label_value)] = \
@@ -520,7 +520,7 @@ class FactorModelDoubleSemi(nn.Module):
                     # 2. / (1 + self.n_modalities) * F.cross_entropy(dis_0, 0 * label_ones)
                     losses['{}_c1'.format(modality_key)] = \
                         F.cross_entropy(dis_1, label_ones)
-                        # 2. / (1 + self.n_modalities) * F.cross_entropy(dis_1, label_ones)
+                    # 2. / (1 + self.n_modalities) * F.cross_entropy(dis_1, label_ones)
 
                     # shuffle x and z together
                     real_x_shuffled, enc_z_shuffled = utils.permute_dim([real_x, enc_z], dim=0)
