@@ -393,14 +393,23 @@ def main():
     content_dim = opt.latent_dim - opt.style_dim
 
     x1_discriminators = nn.ModuleList([
-        models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, output_dim=3),
-        models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim),
+        # models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, output_dim=3),
+        # models.mnist.XZDiscriminatorNew(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, spectral_norm=True),
+        # models.mnist.XZDiscriminatorNew(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, spectral_norm=True),
+        models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, spectral_norm=True),
+        models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, spectral_norm=True),
     ])
     x2_discriminators = nn.ModuleList([
-        models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, output_dim=3),
-        models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim),
+        # models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, output_dim=3),
+        models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, spectral_norm=True),
+        models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, spectral_norm=True),
+        # models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, spectral_norm=True),
+        # models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, spectral_norm=True),
     ])
-    joint_discriminator = models.mnist_svhn.XXDiscriminatorDot(img_shape=mnist_img_shape, channels=svhn_channels)
+    # joint_discriminator = models.mnist_svhn.XXDiscriminatorDotNew(img_shape=mnist_img_shape, channels=svhn_channels)
+    # joint_discriminator = models.mnist_svhn.XXDiscriminatorConv()
+    joint_discriminator = models.mnist_svhn.XXDiscriminator(img_shape=mnist_img_shape, channels=svhn_channels,
+                                                            spectral_norm=True)
 
     model = models.mmali.FactorModelDoubleSemi(
         encoders={
@@ -470,7 +479,6 @@ def main():
             d_losses = {}
 
             x1, x2 = next(paired_dataloader)
-
             x1, x2 = x1.to(device), x2.to(device)
 
             d_losses.update(model({
@@ -487,10 +495,8 @@ def main():
             x1, x2 = next(paired_dataloader)
             unpaired_x1 = utils.permute_dim(x1, dim=0)
             unpaired_x2 = utils.permute_dim(x2, dim=0)
-
             x1, x2 = x1.to(device), x2.to(device)
             unpaired_x1, unpaired_x2 = unpaired_x1.to(device), unpaired_x2.to(device)
-
             s1 = torch.randn(opt.batch_size, opt.style_dim).to(device)
             s2 = torch.randn(opt.batch_size, opt.style_dim).to(device)
             c = torch.randn(opt.batch_size, opt.latent_dim - opt.style_dim).to(device)
@@ -530,25 +536,26 @@ def main():
         for _ in range(opt.gen_iter):
             g_losses = {}
 
-            x1, x2 = next(paired_dataloader)
-
-            x1, x2 = x1.to(device), x2.to(device)
-            g_losses.update(model({
-                key_mnist: {
-                    'x': x1,
-                    'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
-                },
-                key_svhn: {
-                    'x': x2,
-                    'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
-                },
-            }, train_d=False, joint=False, progress=progress))
+            # x1, x2 = next(paired_dataloader)
+            # x1, x2 = x1.to(device), x2.to(device)
+            #
+            # g_losses.update(model({
+            #     key_mnist: {
+            #         'x': x1,
+            #         'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
+            #     },
+            #     key_svhn: {
+            #         'x': x2,
+            #         'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
+            #     },
+            # }, train_d=False, joint=False, progress=progress))
 
             x1, x2 = next(paired_dataloader)
             x1, x2 = x1.to(device), x2.to(device)
             s1 = torch.randn(opt.batch_size, opt.style_dim).to(device)
             s2 = torch.randn(opt.batch_size, opt.style_dim).to(device)
             c = torch.randn(opt.batch_size, opt.latent_dim - opt.style_dim).to(device)
+
             g_losses.update(model({
                 key_mnist: {
                     'x': x1,
