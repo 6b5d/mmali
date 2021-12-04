@@ -8,6 +8,7 @@ parser.add_argument('--dataroot', type=str, default='/tmp/data', help='root dire
 parser.add_argument('--dataset', type=str, default='mnist')
 parser.add_argument('--checkpoint', type=str, help='pretrained checkpoint')
 parser.add_argument('--checkpoint_dir', type=str, help='directory containing pretrained checkpoints')
+parser.add_argument('--checkpoint_tc', type=str, help='pretrained tc discriminator checkpoint')
 parser.add_argument('--save_image', action='store_true', help='if save images to disk')
 
 parser.add_argument('--n_cpu', type=int, default=4, help='number of cpu threads to use during batch generation')

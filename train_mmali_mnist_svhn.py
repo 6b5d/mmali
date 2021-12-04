@@ -13,7 +13,7 @@ import torchvision.transforms
 
 import datasets
 import models
-import models.mmali
+import models.mmali.factor2
 import models.mnist
 import models.mnist_svhn
 import models.svhn
@@ -393,25 +393,18 @@ def main():
     content_dim = opt.latent_dim - opt.style_dim
 
     x1_discriminators = nn.ModuleList([
-        # models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, output_dim=3),
-        # models.mnist.XZDiscriminatorNew(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, spectral_norm=True),
-        # models.mnist.XZDiscriminatorNew(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, spectral_norm=True),
-        models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, spectral_norm=True),
+        models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, spectral_norm=True,
+                                     output_dim=3),
         models.mnist.XZDiscriminator(img_shape=mnist_img_shape, latent_dim=opt.latent_dim, spectral_norm=True),
     ])
     x2_discriminators = nn.ModuleList([
-        # models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, output_dim=3),
+        models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, spectral_norm=True,
+                                    output_dim=3),
         models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, spectral_norm=True),
-        models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, spectral_norm=True),
-        # models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, spectral_norm=True),
-        # models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, spectral_norm=True),
     ])
-    # joint_discriminator = models.mnist_svhn.XXDiscriminatorDotNew(img_shape=mnist_img_shape, channels=svhn_channels)
-    # joint_discriminator = models.mnist_svhn.XXDiscriminatorConv()
-    joint_discriminator = models.mnist_svhn.XXDiscriminator(img_shape=mnist_img_shape, channels=svhn_channels,
-                                                            spectral_norm=True)
+    joint_discriminator = models.mnist_svhn.XXDiscriminator(img_shape=mnist_img_shape, channels=svhn_channels)
 
-    model = models.mmali.FactorModelDoubleSemi(
+    model = models.mmali.factor2.FactorModel(
         encoders={
             key_mnist:
                 conditional(
@@ -442,6 +435,9 @@ def main():
     )
 
     utils.init_param_normal(model)
+    if opt.checkpoint_tc:
+        model.joint_discriminator.load_state_dict(torch.load(opt.checkpoint_tc))
+        print('loaded pretrained tc discriminator from {}'.format(opt.checkpoint_tc))
     model_ema = copy.deepcopy(model)
 
     model.to(device)
@@ -536,19 +532,19 @@ def main():
         for _ in range(opt.gen_iter):
             g_losses = {}
 
-            # x1, x2 = next(paired_dataloader)
-            # x1, x2 = x1.to(device), x2.to(device)
-            #
-            # g_losses.update(model({
-            #     key_mnist: {
-            #         'x': x1,
-            #         'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
-            #     },
-            #     key_svhn: {
-            #         'x': x2,
-            #         'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
-            #     },
-            # }, train_d=False, joint=False, progress=progress))
+            x1, x2 = next(paired_dataloader)
+            x1, x2 = x1.to(device), x2.to(device)
+
+            g_losses.update(model({
+                key_mnist: {
+                    'x': x1,
+                    'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
+                },
+                key_svhn: {
+                    'x': x2,
+                    'z': torch.randn(opt.batch_size, opt.latent_dim).to(device),
+                },
+            }, train_d=False, joint=False, progress=progress))
 
             x1, x2 = next(paired_dataloader)
             x1, x2 = x1.to(device), x2.to(device)
