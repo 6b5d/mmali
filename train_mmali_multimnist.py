@@ -165,7 +165,7 @@ def main():
         factor = 2
     content_dim = opt.latent_dim - opt.style_dim
 
-    model = models.mmali.FactorModelDoubleSemi(
+    model = models.mmali.FactorModel(
         encoders={
             key_template.format(i):
                 conditional(

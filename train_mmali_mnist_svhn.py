@@ -402,7 +402,7 @@ def main():
                                     output_dim=3),
         models.svhn.XZDiscriminator(channels=svhn_channels, latent_dim=opt.latent_dim, spectral_norm=True),
     ])
-    joint_discriminator = models.mnist_svhn.XXDiscriminator(img_shape=mnist_img_shape, channels=svhn_channels)
+    joint_discriminator = models.mnist_svhn.XXDiscriminatorDot(img_shape=mnist_img_shape, channels=svhn_channels)
 
     model = models.mmali.factor2.FactorModel(
         encoders={
