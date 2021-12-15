@@ -15,3 +15,5 @@ python train_mmali_mnist_svhn.py --max_iter 250000 \
                                  --lambda_unimodal 0.1 \
                                  --name exp_mnist_svhn
 ```
+
+## TODO
