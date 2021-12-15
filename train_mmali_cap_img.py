@@ -345,7 +345,7 @@ def main():
     ])
     joint_discriminator = models.cub_caption_image.XXDiscriminatorFTFT()
 
-    model = models.mmali.FactorModelDoubleSemi(
+    model = models.mmali.FactorModel(
         encoders={
             key_cap:
                 conditional(
