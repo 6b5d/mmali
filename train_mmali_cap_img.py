@@ -13,7 +13,7 @@ import models
 import models.cub_caption
 import models.cub_caption_image
 import models.cub_image
-import models.mmali
+import models.mmali.factor2
 import options
 import utils
 
@@ -345,7 +345,7 @@ def main():
     ])
     joint_discriminator = models.cub_caption_image.XXDiscriminatorFTFT()
 
-    model = models.mmali.FactorModel(
+    model = models.mmali.factor2.FactorModel(
         encoders={
             key_cap:
                 conditional(
