@@ -10,7 +10,7 @@ import torchvision.transforms
 
 import datasets
 import models
-import models.mmali
+import models.mmali.joint
 import models.mnist
 import models.multimnist
 import models.svhn
@@ -142,7 +142,7 @@ def main():
     content_dim = opt.latent_dim - opt.style_dim
     total_latent_dim = opt.n_modalities * opt.style_dim + content_dim
 
-    model = models.mmali.JointModel(
+    model = models.mmali.joint.JointModel(
         encoders={
             key_template.format(i):
                 conditional(
