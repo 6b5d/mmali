@@ -1,5 +1,7 @@
 # Multimodal Adversarially Learned Inference with Factorized Discriminators
 
+Implementation of paper Multimodal Adversarially Learned Inference with Factorized Discriminators
+
 ## Conda environment
 
 create a new environment and install following packages
