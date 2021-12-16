@@ -11,7 +11,7 @@ import torchvision.transforms
 
 import datasets
 import models
-import models.mmali
+import models.mmali.factor2
 import models.mnist
 import models.multimnist
 import models.svhn
@@ -165,7 +165,7 @@ def main():
         factor = 2
     content_dim = opt.latent_dim - opt.style_dim
 
-    model = models.mmali.FactorModel(
+    model = models.mmali.factor2.FactorModel(
         encoders={
             key_template.format(i):
                 conditional(
