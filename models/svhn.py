@@ -106,68 +106,68 @@ class XZDiscriminator(nn.Module):
         return out
 
 
-class XDiscriminationFeature(nn.Module):
-    def __init__(self, channels=3, n_features=32, output_dim=256, spectral_norm=True):
-        super().__init__()
-
-        sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
-        self.model = nn.Sequential(
-            # 32x32 -> 16x16
-            sn(nn.Conv2d(channels, n_features, 4, 2, 1)),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            # 16x16 -> 8x8
-            sn(nn.Conv2d(n_features, n_features * 2, 4, 2, 1)),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            # 8x8 -> 4x4
-            sn(nn.Conv2d(n_features * 2, n_features * 4, 4, 2, 1)),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            # 4x4 -> 1x1
-            sn(nn.Conv2d(n_features * 4, output_dim, 4, 1, 0)),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Flatten(start_dim=1),
-        )
-
-    def forward(self, x):
-        return self.model(x)
-
-
-class XFeatureZDiscriminator(nn.Module):
-    def __init__(self, x_feature, latent_dim, hidden_dim=256, output_dim=1, spectral_norm=True):
-        super().__init__()
-
-        sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
-        self.x_feature = x_feature
-
-        self.z_feature = nn.Sequential(
-            sn(nn.Linear(latent_dim, hidden_dim)),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.2),
-
-            sn(nn.Linear(256, hidden_dim)),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.2),
-        )
-
-        self.joint_discriminator = nn.Sequential(
-            sn(nn.Linear(2 * hidden_dim, 1024)),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.2),
-
-            sn(nn.Linear(1024, 1024)),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.2),
-
-            sn(nn.Linear(1024, output_dim)),
-        )
-
-    def forward(self, x, z):
-        hx = self.x_feature(x)
-        hz = self.z_feature(z)
-        return self.joint_discriminator(torch.cat([hx, hz], dim=1))
+# class XDiscriminationFeature(nn.Module):
+#     def __init__(self, channels=3, n_features=32, output_dim=256, spectral_norm=True):
+#         super().__init__()
+#
+#         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
+#         self.model = nn.Sequential(
+#             # 32x32 -> 16x16
+#             sn(nn.Conv2d(channels, n_features, 4, 2, 1)),
+#             nn.LeakyReLU(0.2, inplace=True),
+#
+#             # 16x16 -> 8x8
+#             sn(nn.Conv2d(n_features, n_features * 2, 4, 2, 1)),
+#             nn.LeakyReLU(0.2, inplace=True),
+#
+#             # 8x8 -> 4x4
+#             sn(nn.Conv2d(n_features * 2, n_features * 4, 4, 2, 1)),
+#             nn.LeakyReLU(0.2, inplace=True),
+#
+#             # 4x4 -> 1x1
+#             sn(nn.Conv2d(n_features * 4, output_dim, 4, 1, 0)),
+#             nn.LeakyReLU(0.2, inplace=True),
+#
+#             nn.Flatten(start_dim=1),
+#         )
+#
+#     def forward(self, x):
+#         return self.model(x)
+#
+#
+# class XFeatureZDiscriminator(nn.Module):
+#     def __init__(self, x_feature, latent_dim, hidden_dim=256, output_dim=1, spectral_norm=True):
+#         super().__init__()
+#
+#         sn = nn.utils.spectral_norm if spectral_norm else lambda x: x
+#         self.x_feature = x_feature
+#
+#         self.z_feature = nn.Sequential(
+#             sn(nn.Linear(latent_dim, hidden_dim)),
+#             nn.LeakyReLU(0.2, inplace=True),
+#             nn.Dropout(0.2),
+#
+#             sn(nn.Linear(256, hidden_dim)),
+#             nn.LeakyReLU(0.2, inplace=True),
+#             nn.Dropout(0.2),
+#         )
+#
+#         self.joint_discriminator = nn.Sequential(
+#             sn(nn.Linear(2 * hidden_dim, 1024)),
+#             nn.LeakyReLU(0.2, inplace=True),
+#             nn.Dropout(0.2),
+#
+#             sn(nn.Linear(1024, 1024)),
+#             nn.LeakyReLU(0.2, inplace=True),
+#             nn.Dropout(0.2),
+#
+#             sn(nn.Linear(1024, output_dim)),
+#         )
+#
+#     def forward(self, x, z):
+#         hx = self.x_feature(x)
+#         hz = self.z_feature(z)
+#         return self.joint_discriminator(torch.cat([hx, hz], dim=1))
 
 
 class Classifier(nn.Module):

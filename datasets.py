@@ -160,198 +160,198 @@ class MultiMNIST(data.Dataset):
         return imgs
 
 
-class MNISTSVHN(data.Dataset):
-    def __init__(self, mnist, svhn, max_d=10000, dm=30, use_all=False, label=False, order='ms'):
-        super().__init__()
-        assert order in ['ms', 'sm']
-        self.mnist = mnist
-        self.svhn = svhn
-        self.label = label
-        self.order = order
-
-        mnist_l, mnist_li = self.mnist.targets.sort()
-        svhn_l, svhn_li = torch.from_numpy(self.svhn.labels).sort()
-        idx1, idx2 = rand_match_on_idx(mnist_l, mnist_li, svhn_l, svhn_li, max_d=max_d, data_multiplication=dm,
-                                       use_all=use_all)
-        self.mnist_idx = idx1
-        self.svhn_idx = idx2
-
-        assert len(self.mnist_idx) == len(self.svhn_idx)
-        print('total: {}'.format(len(self.mnist_idx)))
-
-    def __len__(self):
-        return len(self.mnist_idx)
-
-    def __getitem__(self, index):
-        if self.order == 'ms':
-            if self.label:
-                return self.mnist[self.mnist_idx[index]][0], self.svhn[self.svhn_idx[index]][0], \
-                       self.mnist[self.mnist_idx[index]][1]
-
-            return self.mnist[self.mnist_idx[index]][0], self.svhn[self.svhn_idx[index]][0]
-        elif self.order == 'sm':
-            if self.label:
-                return self.svhn[self.svhn_idx[index]][0], self.mnist[self.mnist_idx[index]][0], \
-                       self.mnist[self.mnist_idx[index]][1]
-
-            return self.svhn[self.svhn_idx[index]][0], self.mnist[self.mnist_idx[index]][0]
-
-
-class CUBCaption(data.Dataset):
-    def __init__(self, root, split='train', transform=None):
-        super().__init__()
-        assert split in ['train', 'test']
-
-        self.root = root
-        self.split = split
-        self.transform = transform
-
-        if self.split == 'train':
-            raw_data_path = os.path.join(self.root, 'cub/text_trainvalclasses.txt')
-        else:
-            raw_data_path = os.path.join(self.root, 'cub/text_testclasses.txt')
-
-        self.vocab = self.create_vocab()
-        self.data = self.create_data(raw_data_path)
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, index):
-        if self.transform is not None:
-            return self.transform(self.data[index]), index
-
-        # index as label
-        return self.data[index], index
-
-    def create_vocab(self):
-        if os.path.exists(os.path.join(self.root, 'cub/processed/vocab.json')):
-            with open(os.path.join(self.root, 'cub/processed/vocab.json'), 'r') as file:
-                vocab = json.load(file)
-        else:
-            with open(os.path.join(self.root, 'cub/text_trainvalclasses.txt'), 'r') as file:
-                sentences = sent_tokenize(file.read())
-                texts = [word_tokenize(s) for s in sentences]
-
-            occ_register = OrderedCounter()
-            w2i = dict()
-            i2w = dict()
-
-            special_tokens = ['<exc>', '<pad>', '<eos>']
-            for st in special_tokens:
-                i2w[len(w2i)] = st
-                w2i[st] = len(w2i)
-
-            unq_words = []
-
-            for words in texts:
-                occ_register.update(words)
-
-            for w, occ in occ_register.items():
-                if occ > 3 and w not in special_tokens:
-                    i2w[len(w2i)] = w
-                    w2i[w] = len(w2i)
-                else:
-                    unq_words.append(w)
-
-            assert len(w2i) == len(i2w)
-
-            vocab = dict(w2i=w2i, i2w=i2w)
-            with open(os.path.join(self.root, 'cub/processed/vocab.json'), 'w') as file:
-                json.dump(vocab, file, ensure_ascii=False)
-
-            with open(os.path.join(self.root, 'cub/processed/vocab.json'), 'r') as file:
-                vocab = json.load(file)
-
-        return vocab
-
-    def create_data(self, raw_data_path):
-
-        with open(raw_data_path, 'r') as file:
-            sentences = sent_tokenize(file.read())
-            texts = [word_tokenize(s) for s in sentences]
-
-        dataset = []
-        seq_len = 32
-        for words in texts:
-            words_trunc = words[:seq_len - 1]
-            words_trunc += ['<eos>']
-            word_len = len(words_trunc)
-            if seq_len > word_len:
-                words_trunc.extend(['<pad>'] * (seq_len - word_len))
-            dataset.append(list(map(lambda w: self.vocab['w2i'].get(w, self.vocab['w2i']['<eos>']), words_trunc)))
-        return dataset
+# class MNISTSVHN(data.Dataset):
+#     def __init__(self, mnist, svhn, max_d=10000, dm=30, use_all=False, label=False, order='ms'):
+#         super().__init__()
+#         assert order in ['ms', 'sm']
+#         self.mnist = mnist
+#         self.svhn = svhn
+#         self.label = label
+#         self.order = order
+#
+#         mnist_l, mnist_li = self.mnist.targets.sort()
+#         svhn_l, svhn_li = torch.from_numpy(self.svhn.labels).sort()
+#         idx1, idx2 = rand_match_on_idx(mnist_l, mnist_li, svhn_l, svhn_li, max_d=max_d, data_multiplication=dm,
+#                                        use_all=use_all)
+#         self.mnist_idx = idx1
+#         self.svhn_idx = idx2
+#
+#         assert len(self.mnist_idx) == len(self.svhn_idx)
+#         print('total: {}'.format(len(self.mnist_idx)))
+#
+#     def __len__(self):
+#         return len(self.mnist_idx)
+#
+#     def __getitem__(self, index):
+#         if self.order == 'ms':
+#             if self.label:
+#                 return self.mnist[self.mnist_idx[index]][0], self.svhn[self.svhn_idx[index]][0], \
+#                        self.mnist[self.mnist_idx[index]][1]
+#
+#             return self.mnist[self.mnist_idx[index]][0], self.svhn[self.svhn_idx[index]][0]
+#         elif self.order == 'sm':
+#             if self.label:
+#                 return self.svhn[self.svhn_idx[index]][0], self.mnist[self.mnist_idx[index]][0], \
+#                        self.mnist[self.mnist_idx[index]][1]
+#
+#             return self.svhn[self.svhn_idx[index]][0], self.mnist[self.mnist_idx[index]][0]
 
 
-class CUBCaptionVector(data.Dataset):
-    def __init__(self, root, split='train', emb_size=128, normalization=None, margin=1.0, transform=None):
-        super().__init__()
-        assert split in ['train', 'test']
-
-        self.root = root
-        self.split = split
-        self.emb_size = emb_size
-        self.normalization = normalization
-        self.margin = margin
-        self.transform = transform
-
-        self.model = gensim.models.Word2Vec.load(
-            os.path.join(self.root, 'cub/processed/savedmodel{}.model'.format(emb_size)))
-
-        d = torch.load(os.path.join(self.root,
-                                    'cub/processed/cub-cap-{}{}.pt'.format(split, emb_size)), map_location='cpu')
-        self.data = d['data']
-        self.normalizer = None
-
-        if self.normalization:
-            assert normalization in ['min-max', 'mean-std']
-            if self.normalization == 'min-max':
-                self.normalizer = self.margin * 2.0 / (d['max'] - d['min']), \
-                                  self.margin * (-2.0 * d['min'] / (d['max'] - d['min']) - 1.0)
-            elif self.normalization == 'mean-std':
-                self.normalizer = 1.0 / d['std'], -d['mean'] / d['std']
-
-            self.data = self.data * self.normalizer[0] + self.normalizer[1]
-
-        print('shape:', self.data.size())
-        print('min:', self.data.min().item(), 'max:', self.data.max().item(),
-              'mean:', self.data.mean().item(), 'std:', self.data.std().item())
-
-    def encode(self, texts):
-        embeddings = []
-        for words in texts:
-            emb = np.stack([self.model.wv.get_vector(w) for w in words], axis=0)
-            embeddings.append(emb)
-
-        embeddings = np.stack(embeddings, axis=0)
-        embeddings = np.expand_dims(embeddings, axis=1)
-        embeddings = torch.from_numpy(embeddings)
-        if self.normalizer:
-            embeddings = embeddings * self.normalizer[0] + self.normalizer[1]
-        return embeddings
-
-    def decode(self, x):
-        # N, 1, H, W
-        x = x.squeeze(dim=1)
-        if self.normalizer:
-            x = (x - self.normalizer[1]) / self.normalizer[0]
-
-        x = x.cpu().numpy()
-        sentences = [[
-            self.model.wv.similar_by_vector(word)[0][0] for word in sent
-        ] for sent in x]
-
-        return sentences
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, index):
-        if self.transform is not None:
-            return self.transform(self.data[index]), index
-
-        # index as label
-        return self.data[index], index
+# class CUBCaption(data.Dataset):
+#     def __init__(self, root, split='train', transform=None):
+#         super().__init__()
+#         assert split in ['train', 'test']
+#
+#         self.root = root
+#         self.split = split
+#         self.transform = transform
+#
+#         if self.split == 'train':
+#             raw_data_path = os.path.join(self.root, 'cub/text_trainvalclasses.txt')
+#         else:
+#             raw_data_path = os.path.join(self.root, 'cub/text_testclasses.txt')
+#
+#         self.vocab = self.create_vocab()
+#         self.data = self.create_data(raw_data_path)
+#
+#     def __len__(self):
+#         return len(self.data)
+#
+#     def __getitem__(self, index):
+#         if self.transform is not None:
+#             return self.transform(self.data[index]), index
+#
+#         # index as label
+#         return self.data[index], index
+#
+#     def create_vocab(self):
+#         if os.path.exists(os.path.join(self.root, 'cub/processed/vocab.json')):
+#             with open(os.path.join(self.root, 'cub/processed/vocab.json'), 'r') as file:
+#                 vocab = json.load(file)
+#         else:
+#             with open(os.path.join(self.root, 'cub/text_trainvalclasses.txt'), 'r') as file:
+#                 sentences = sent_tokenize(file.read())
+#                 texts = [word_tokenize(s) for s in sentences]
+#
+#             occ_register = OrderedCounter()
+#             w2i = dict()
+#             i2w = dict()
+#
+#             special_tokens = ['<exc>', '<pad>', '<eos>']
+#             for st in special_tokens:
+#                 i2w[len(w2i)] = st
+#                 w2i[st] = len(w2i)
+#
+#             unq_words = []
+#
+#             for words in texts:
+#                 occ_register.update(words)
+#
+#             for w, occ in occ_register.items():
+#                 if occ > 3 and w not in special_tokens:
+#                     i2w[len(w2i)] = w
+#                     w2i[w] = len(w2i)
+#                 else:
+#                     unq_words.append(w)
+#
+#             assert len(w2i) == len(i2w)
+#
+#             vocab = dict(w2i=w2i, i2w=i2w)
+#             with open(os.path.join(self.root, 'cub/processed/vocab.json'), 'w') as file:
+#                 json.dump(vocab, file, ensure_ascii=False)
+#
+#             with open(os.path.join(self.root, 'cub/processed/vocab.json'), 'r') as file:
+#                 vocab = json.load(file)
+#
+#         return vocab
+#
+#     def create_data(self, raw_data_path):
+#
+#         with open(raw_data_path, 'r') as file:
+#             sentences = sent_tokenize(file.read())
+#             texts = [word_tokenize(s) for s in sentences]
+#
+#         dataset = []
+#         seq_len = 32
+#         for words in texts:
+#             words_trunc = words[:seq_len - 1]
+#             words_trunc += ['<eos>']
+#             word_len = len(words_trunc)
+#             if seq_len > word_len:
+#                 words_trunc.extend(['<pad>'] * (seq_len - word_len))
+#             dataset.append(list(map(lambda w: self.vocab['w2i'].get(w, self.vocab['w2i']['<eos>']), words_trunc)))
+#         return dataset
+#
+#
+# class CUBCaptionVector(data.Dataset):
+#     def __init__(self, root, split='train', emb_size=128, normalization=None, margin=1.0, transform=None):
+#         super().__init__()
+#         assert split in ['train', 'test']
+#
+#         self.root = root
+#         self.split = split
+#         self.emb_size = emb_size
+#         self.normalization = normalization
+#         self.margin = margin
+#         self.transform = transform
+#
+#         self.model = gensim.models.Word2Vec.load(
+#             os.path.join(self.root, 'cub/processed/savedmodel{}.model'.format(emb_size)))
+#
+#         d = torch.load(os.path.join(self.root,
+#                                     'cub/processed/cub-cap-{}{}.pt'.format(split, emb_size)), map_location='cpu')
+#         self.data = d['data']
+#         self.normalizer = None
+#
+#         if self.normalization:
+#             assert normalization in ['min-max', 'mean-std']
+#             if self.normalization == 'min-max':
+#                 self.normalizer = self.margin * 2.0 / (d['max'] - d['min']), \
+#                                   self.margin * (-2.0 * d['min'] / (d['max'] - d['min']) - 1.0)
+#             elif self.normalization == 'mean-std':
+#                 self.normalizer = 1.0 / d['std'], -d['mean'] / d['std']
+#
+#             self.data = self.data * self.normalizer[0] + self.normalizer[1]
+#
+#         print('shape:', self.data.size())
+#         print('min:', self.data.min().item(), 'max:', self.data.max().item(),
+#               'mean:', self.data.mean().item(), 'std:', self.data.std().item())
+#
+#     def encode(self, texts):
+#         embeddings = []
+#         for words in texts:
+#             emb = np.stack([self.model.wv.get_vector(w) for w in words], axis=0)
+#             embeddings.append(emb)
+#
+#         embeddings = np.stack(embeddings, axis=0)
+#         embeddings = np.expand_dims(embeddings, axis=1)
+#         embeddings = torch.from_numpy(embeddings)
+#         if self.normalizer:
+#             embeddings = embeddings * self.normalizer[0] + self.normalizer[1]
+#         return embeddings
+#
+#     def decode(self, x):
+#         # N, 1, H, W
+#         x = x.squeeze(dim=1)
+#         if self.normalizer:
+#             x = (x - self.normalizer[1]) / self.normalizer[0]
+#
+#         x = x.cpu().numpy()
+#         sentences = [[
+#             self.model.wv.similar_by_vector(word)[0][0] for word in sent
+#         ] for sent in x]
+#
+#         return sentences
+#
+#     def __len__(self):
+#         return len(self.data)
+#
+#     def __getitem__(self, index):
+#         if self.transform is not None:
+#             return self.transform(self.data[index]), index
+#
+#         # index as label
+#         return self.data[index], index
 
 
 class CUBCaptionFeature(data.Dataset):
@@ -462,28 +462,28 @@ class CaptionImagePair(data.Dataset):
         return self.cap[index][0], self.img[index // 10][0]
 
 
-class CUBCaptionImageFeature(data.Dataset):
-    def __init__(self, root, split='train'):
-        super().__init__()
-
-        self.root = root
-        self.split = split
-
-        with open(os.path.join(self.root, 'cub/processed/{}/char-CNN-RNN-embeddings.pickle'.format(split)), 'rb') as f:
-            cap_feat = pickle.load(f, encoding='bytes')
-            cap_feat = torch.from_numpy(np.array(cap_feat))
-        self.cap_feat = cap_feat
-
-        d = torch.load(os.path.join(self.root, 'cub/processed/cub-img-{}.pt'.format(split)), map_location='cpu')
-        self.img_feat = d['data']
-
-    def __len__(self):
-        return len(self.cap_feat) * 10
-
-    def __getitem__(self, index):
-        idx1, idx2 = index // 10, index % 10
-
-        return self.cap_feat[idx1][idx2], self.img_feat[idx1]
+# class CUBCaptionImageFeature(data.Dataset):
+#     def __init__(self, root, split='train'):
+#         super().__init__()
+#
+#         self.root = root
+#         self.split = split
+#
+#         with open(os.path.join(self.root, 'cub/processed/{}/char-CNN-RNN-embeddings.pickle'.format(split)), 'rb') as f:
+#             cap_feat = pickle.load(f, encoding='bytes')
+#             cap_feat = torch.from_numpy(np.array(cap_feat))
+#         self.cap_feat = cap_feat
+#
+#         d = torch.load(os.path.join(self.root, 'cub/processed/cub-img-{}.pt'.format(split)), map_location='cpu')
+#         self.img_feat = d['data']
+#
+#     def __len__(self):
+#         return len(self.cap_feat) * 10
+#
+#     def __getitem__(self, index):
+#         idx1, idx2 = index // 10, index % 10
+#
+#         return self.cap_feat[idx1][idx2], self.img_feat[idx1]
 
 
 if __name__ == '__main__':
