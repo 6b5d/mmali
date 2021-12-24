@@ -295,6 +295,7 @@ def eval_generation(n_iter):
     print('evaluating generation:', cmd)
 
     if opt.deterministic:
+        cmd += ' --deterministic'
         acc_m2s, acc_s2m, acc_joint = subprocess.run(cmd,
                                                      capture_output=True, text=True, shell=True,
                                                      cwd='{}/src'.format(output_dir),

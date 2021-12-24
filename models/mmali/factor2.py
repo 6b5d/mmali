@@ -188,7 +188,6 @@ class FactorModel(nn.Module):
                     losses['{}_0'.format(modality_key)] = torch.mean(F.softplus(-dis_real)) + \
                                                           torch.mean(F.softplus(dis_fake))
 
-                    # q(x, s, c) : q(x, s) p(c)
                     # q(x, s) p(c) : p(x, s, c)
                     dis_real = discriminator[1](real_x_shuffled, cs_shuffled)
                     dis_fake = discriminator[1](dec_x, real_z)
