@@ -30,6 +30,10 @@ python train_mmali_mnist_svhn.py --max_iter 250000 \
                                  --latent_dim 20 
                                  --use_all \
                                  --lambda_unimodal 0.1 \
+                                 --lambda_x_rec 0.05 \
+                                 --lambda_s_rec 0.05 \
+                                 --lambda_c_rec 0.05 \
+                                 --joint_rec \
                                  --name exp_mnist_svhn
 ```
 
