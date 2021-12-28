@@ -13,7 +13,7 @@ conda install python=3.8 pytorch=1.7 cudatoolkit=10.2 torchvision=0.8 torchaudio
 
 ## MultiMNIST
 
-```train_mmali_multimnist.py
+```shell
 python train_mmali_multimnist.py --max_iter 250000 \
                                  --style_dim 10 \
                                  --latent_dim 20 \
