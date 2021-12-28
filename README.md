@@ -49,11 +49,11 @@ dataset will be downloaded to /tmp/data and the results will be saved to /tmp/ex
 ### training
 ```shell
 python train_mmali_cap_img.py --max_iter 250000 \
-                                 --style_dim 32 \
-                                 --latent_dim 64 
-                                 --lambda_unimodal 1.0 \
-                                 --lambda_x_rec 1.0 \
-                                 --name exp_cap_img
+                              --style_dim 32 \
+                              --latent_dim 64 
+                              --lambda_unimodal 1.0 \
+                              --lambda_x_rec 1.0 \
+                              --name exp_cap_img
 ```
 
 Use [pretrained model](https://drive.google.com/open?id=1j9do5K1BbghwD6W--XvJmbhj21XEEqjV) to decode sentence features
