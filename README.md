@@ -42,7 +42,7 @@ dataset will be downloaded to /tmp/data and the results will be saved to /tmp/ex
 ## CUB
 
 ### prepare dataset and pretrained model to extract features
-1. Download CUB dataset
+1. Download [CUB dataset](http://www.vision.caltech.edu/visipedia/CUB-200-2011.html)
 2. Download the preprocessed char-CNN-RNN text embeddings for [birds](https://drive.google.com/open?id=1j9do5K1BbghwD6W--XvJmbhj21XEEqjV) (From Joint-GAN)
 3. run ``python make_cub_img_ft.py`` to extract image embeddings using ResNet101
 
