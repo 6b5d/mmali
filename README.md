@@ -1,6 +1,6 @@
 # Multimodal Adversarially Learned Inference with Factorized Discriminators
 
-Implementation of paper Multimodal Adversarially Learned Inference with Factorized Discriminators
+Implementation of paper Multimodal Adversarially Learned Inference with Factorized Discriminators [arxiv](https://arxiv.org/abs/2112.10384)
 
 ## Conda environment
 
