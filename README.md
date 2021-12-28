@@ -39,6 +39,21 @@ python train_mmali_mnist_svhn.py --max_iter 250000 \
 
 dataset will be downloaded to /tmp/data and the results will be saved to /tmp/exps
 
-## CUB: TODO
+## CUB
 
 ### prepare dataset and pretrained model to extract features
+1. Download CUB dataset
+2. Download the preprocessed char-CNN-RNN text embeddings for [birds](https://drive.google.com/open?id=1j9do5K1BbghwD6W--XvJmbhj21XEEqjV) (From Joint-GAN)
+3. run ``python make_cub_img_ft.py`` to extract image embeddings using ResNet101
+
+### training
+```shell
+python train_mmali_cap_img.py --max_iter 250000 \
+                                 --style_dim 32 \
+                                 --latent_dim 64 
+                                 --lambda_unimodal 1.0 \
+                                 --lambda_x_rec 1.0 \
+                                 --name exp_cap_img
+```
+
+Use [pretrained model](https://drive.google.com/open?id=1j9do5K1BbghwD6W--XvJmbhj21XEEqjV) to decode sentence features
